@@ -12,7 +12,7 @@ import os
 import json
 from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
-from common.db_utils import get_db_connection
+from common.db_utils import get_connection
 import bcrypt
 
 # Create Flask app with static and template folders
@@ -66,7 +66,7 @@ def login():
         if not email or not password:
             return jsonify({'error': 'Email and password required'}), 400
         
-        conn = get_db_connection()
+        conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         
         # Try Student Service Admin
