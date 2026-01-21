@@ -9,11 +9,14 @@ Usage:
 """
 
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_file, send_from_directory
 from flask_cors import CORS
 
-# Create Flask app
-app = Flask(__name__)
+# Create Flask app with static and template folders
+app = Flask(__name__, 
+            static_folder='common',
+            static_url_path='/static',
+            template_folder='common')
 CORS(app, origins="*", supports_credentials=True, allow_headers="*", 
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"])
 
@@ -28,13 +31,22 @@ def health():
 
 @app.route('/', methods=['GET'])
 def index():
-    """Root endpoint"""
-    return jsonify({
-        'message': 'Student Attendance Management System',
-        'version': '1.0.0',
-        'status': 'running',
-        'environment': os.getenv('ENVIRONMENT', 'production')
-    }), 200
+    """Serve login page"""
+    try:
+        return send_file('login.html')
+    except FileNotFoundError:
+        return jsonify({
+            'message': 'Student Attendance Management System',
+            'version': '1.0.0',
+            'status': 'running',
+            'note': 'login.html not found'
+        }), 200
+
+# Serve static files (CSS, JS, images, etc.)
+@app.route('/static/<path:filename>', methods=['GET'])
+def serve_static(filename):
+    """Serve static files from common folder"""
+    return send_from_directory('common', filename)
 
 # ============================================================================
 # LECTURER API ENDPOINTS
