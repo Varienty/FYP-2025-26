@@ -37,3 +37,8 @@ desktop.ini
 *.tmp
 *.bak
 *.old
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml

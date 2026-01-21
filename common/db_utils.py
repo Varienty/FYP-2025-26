@@ -1,5 +1,6 @@
 import os
 from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import urlparse
 
 import mysql.connector
 from mysql.connector import pooling
@@ -8,14 +9,43 @@ from dotenv import load_dotenv
 # Load .env if present from project root
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
-# AWS RDS takes priority, then environment variables, then defaults
-DB_CONFIG = {
-    'host': os.getenv('RDS_HOSTNAME') or os.getenv('DB_HOST', '127.0.0.1'),
-    'user': os.getenv('RDS_USERNAME') or os.getenv('DB_USER', 'root'),
-    'password': os.getenv('RDS_PASSWORD') or os.getenv('DB_PASSWORD', ''),
-    'database': os.getenv('RDS_DB_NAME') or os.getenv('DB_NAME', 'student_attendance'),
-    'port': int(os.getenv('RDS_PORT') or os.getenv('DB_PORT', '3306')),
-}
+# Parse database URL from Railway, AWS RDS, or local config
+def _get_db_config():
+    # Try Railway first (DATABASE_URL)
+    database_url = os.getenv('DATABASE_URL')
+    if database_url:
+        try:
+            url = urlparse(database_url)
+            return {
+                'host': url.hostname,
+                'user': url.username,
+                'password': url.password,
+                'database': url.path.lstrip('/'),
+                'port': url.port or 3306,
+            }
+        except Exception as e:
+            print(f"Warning: Could not parse DATABASE_URL: {e}")
+    
+    # Try AWS RDS environment variables
+    if os.getenv('RDS_HOSTNAME'):
+        return {
+            'host': os.getenv('RDS_HOSTNAME'),
+            'user': os.getenv('RDS_USERNAME', 'root'),
+            'password': os.getenv('RDS_PASSWORD', ''),
+            'database': os.getenv('RDS_DB_NAME', 'student_attendance'),
+            'port': int(os.getenv('RDS_PORT', '3306')),
+        }
+    
+    # Fall back to local development config
+    return {
+        'host': os.getenv('DB_HOST', '127.0.0.1'),
+        'user': os.getenv('DB_USER', 'root'),
+        'password': os.getenv('DB_PASSWORD', ''),
+        'database': os.getenv('DB_NAME', 'student_attendance'),
+        'port': int(os.getenv('DB_PORT', '3306')),
+    }
+
+DB_CONFIG = _get_db_config()
 
 _pool: Optional[pooling.MySQLConnectionPool] = None
 

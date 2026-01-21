@@ -141,24 +141,33 @@ global:
 ### Option A: Using EB CLI (Recommended - Easiest)
 
 ```powershell
-# Create environment with RDS database
-eb create attendance-prod `
-  --instance-type t2.micro `
-  --database `
-  --db.engine mysql `
-  --db.version 8.0 `
-  --db.instance db.t2.micro `
-  --db.user admin `
-  --envvars FLASK_ENV=production,PYTHONUNBUFFERED=true
+# Create environment with EC2 instance
+eb create attendance-prod --instance-type t2.micro
+
+# When prompted:
+# - Environment name: attendance-prod (or press Enter for default)
+# - Platform: Python 3.11 (should auto-select)
+# - Use CodeCommit: No
 
 # This will:
 # ✓ Create EC2 instance (t2.micro - free tier)
-# ✓ Create RDS MySQL database (free tier)
 # ✓ Deploy your application
 # ✓ Takes about 5-10 minutes
 
 # Monitor creation
 eb status
+
+# After environment is created, add RDS database via console:
+# 1. Go to https://console.aws.amazon.com/elasticbeanstalk
+# 2. Click on attendance-prod environment
+# 3. Click Configuration
+# 4. Click Edit under Database
+# 5. Enable database with MySQL, db.t2.micro
+# 6. Click Apply
+
+# Alternative: Use eb config to add database
+eb config
+# Find the RDS section and uncomment/configure it
 ```
 
 ### Option B: Using AWS Console (Manual)

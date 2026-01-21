@@ -17,13 +17,21 @@ cd c:\Users\amosy\OneDrive\Documents\GitHub\FYP-2025-26
 # 4. Initialize Elastic Beanstalk
 eb init -p python-3.11 attendance-system --region us-east-1
 
-# 5. Create environment with database
-eb create attendance-prod --instance-type t2.micro --database --db.engine mysql
+# 5. Create environment (EC2 only)
+eb create attendance-prod --instance-type t2.micro
 
 # 6. Wait for deployment (5-10 minutes)
 eb status
 
-# 7. Get your URL
+# 7. THEN add database via AWS Console:
+#    - Go to Elastic Beanstalk console
+#    - Click attendance-prod environment
+#    - Configuration → Edit Database
+#    - Enable RDS: MySQL, db.t2.micro
+#    - Save and apply
+#    OR use: eb config (then uncomment RDS section)
+
+# 8. Get your URL
 eb open
 ```
 
