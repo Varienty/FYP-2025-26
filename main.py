@@ -33,7 +33,7 @@ def health():
 def index():
     """Serve login page"""
     try:
-        return send_file('login.html')
+        return send_from_directory('common', 'login.html')
     except FileNotFoundError:
         return jsonify({
             'message': 'Student Attendance Management System',
