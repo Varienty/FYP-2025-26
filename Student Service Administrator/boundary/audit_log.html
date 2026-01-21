@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Edit Audit Log - SSA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .timeline-item {
+            position: relative;
+            padding-left: 40px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background: #e5e7eb;
+        }
+        .timeline-dot {
+            position: absolute;
+            left: 10px;
+            top: 8px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #3b82f6;
+            border: 2px solid white;
+            box-shadow: 0 0 0 2px #e5e7eb;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Attendance Edit Audit Log</h1>
+            <div class="flex items-center space-x-4">
+                <a href="./dashboard.html" class="bg-gray-700 hover:bg-gray-800 px-4 py-2 rounded-lg transition">Back to Dashboard</a>
+                <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">📋 Attendance Edit Audit Log</h1>
+                <p class="text-gray-600 mt-2">Track all manual changes to student attendance records</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="toggleView('table')" id="tableViewBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg">
+                    📊 Table View
+                </button>
+                <button onclick="toggleView('timeline')" id="timelineViewBtn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg">
+                    📅 Timeline View
+                </button>
+            </div>
+        </div>
+
+        <!-- Filters Card -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">🔍 Filters</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                    <input type="date" id="startDate" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                    <input type="date" id="endDate" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Module/Class</label>
+                    <select id="moduleFilter" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Modules</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Change Type</label>
+                    <select id="changeTypeFilter" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Types</option>
+                        <option value="mark_present">Mark Present</option>
+                        <option value="mark_absent">Mark Absent</option>
+                        <option value="mark_late">Mark Late</option>
+                        <option value="mark_excused">Mark Excused</option>
+                        <option value="approve_mc">Approve MC</option>
+                        <option value="reject_mc">Reject MC</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Admin Name</label>
+                    <input type="text" id="adminFilter" placeholder="Search by admin name..." class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Student ID</label>
+                    <input type="text" id="studentFilter" placeholder="Search by student ID..." class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex items-end">
+                    <button onclick="loadAuditLog()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg">
+                        Search Audit Log
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message -->
+        <div id="message" class="hidden p-4 rounded-lg mb-6"></div>
+
+        <!-- Table View -->
+        <div id="tableView" class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Audit Records</h3>
+                <button onclick="exportToCSV()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">
+                    📥 Export CSV
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-semibold">Timestamp</th>
+                            <th class="px-4 py-3 text-left font-semibold">Admin</th>
+                            <th class="px-4 py-3 text-left font-semibold">Admin Email</th>
+                            <th class="px-4 py-3 text-left font-semibold">Student ID</th>
+                            <th class="px-4 py-3 text-left font-semibold">Student Name</th>
+                            <th class="px-4 py-3 text-left font-semibold">Module</th>
+                            <th class="px-4 py-3 text-left font-semibold">Lesson Date</th>
+                            <th class="px-4 py-3 text-left font-semibold">Change</th>
+                            <th class="px-4 py-3 text-left font-semibold">Previous → New</th>
+                            <th class="px-4 py-3 text-left font-semibold">Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditTableBody" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+            <div id="noRecords" class="hidden text-center py-12 text-gray-500">
+                <span class="text-6xl">📭</span>
+                <p class="mt-4 text-lg">No audit records found for the selected filters</p>
+            </div>
+        </div>
+
+        <!-- Timeline View -->
+        <div id="timelineView" class="hidden bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">Timeline View</h3>
+                <button onclick="exportToCSV()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">
+                    📥 Export CSV
+                </button>
+            </div>
+            <div id="timelineContainer" class="space-y-6"></div>
+        </div>
+    </div>
+
+    <script src="../../common/config.js"></script>
+    <script src="../../common/auth.js"></script>
+    <script>
+        requireAuth('student-service-admin');
+
+        let currentView = 'table';
+        let auditRecords = [];
+
+        // Set default dates
+        const today = new Date();
+        const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+        document.getElementById('startDate').value = thirtyDaysAgo.toISOString().split('T')[0];
+        document.getElementById('endDate').value = today.toISOString().split('T')[0];
+
+        // Load modules for filter
+        async function loadModules() {
+            try {
+                const response = await fetch('http://localhost:5008/api/attendance/classes');
+                const data = await response.json();
+                if (data.ok && data.classes) {
+                    const select = document.getElementById('moduleFilter');
+                    data.classes.forEach(cls => {
+                        const option = document.createElement('option');
+                        option.value = cls.id;
+                        option.textContent = `${cls.code} - ${cls.name}`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (e) {
+                console.error('Error loading modules:', e);
+            }
+        }
+
+        // Toggle between table and timeline view
+        function toggleView(view) {
+            currentView = view;
+            if (view === 'table') {
+                document.getElementById('tableView').classList.remove('hidden');
+                document.getElementById('timelineView').classList.add('hidden');
+                document.getElementById('tableViewBtn').className = 'bg-blue-500 text-white px-4 py-2 rounded-lg';
+                document.getElementById('timelineViewBtn').className = 'bg-gray-200 text-gray-700 px-4 py-2 rounded-lg';
+            } else {
+                document.getElementById('tableView').classList.add('hidden');
+                document.getElementById('timelineView').classList.remove('hidden');
+                document.getElementById('tableViewBtn').className = 'bg-gray-200 text-gray-700 px-4 py-2 rounded-lg';
+                document.getElementById('timelineViewBtn').className = 'bg-blue-500 text-white px-4 py-2 rounded-lg';
+                renderTimeline();
+            }
+        }
+
+        // Load audit log
+        async function loadAuditLog() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const moduleId = document.getElementById('moduleFilter').value;
+            const changeType = document.getElementById('changeTypeFilter').value;
+            const admin = document.getElementById('adminFilter').value;
+            const student = document.getElementById('studentFilter').value;
+
+            try {
+                // Build query string
+                const params = new URLSearchParams({
+                    startDate: startDate,
+                    endDate: endDate
+                });
+
+                if (moduleId) params.append('moduleId', moduleId);
+                if (changeType) params.append('changeType', changeType);
+                if (admin) params.append('adminName', admin);
+                if (student) params.append('studentId', student);
+
+                // Fetch from API
+                const response = await fetch(`http://localhost:5008/api/attendance/audit-log?${params}`);
+                const data = await response.json();
+
+                if (data.ok && data.records) {
+                    auditRecords = data.records;
+                    displayRecords(data.records);
+                    showMessage(`Found ${data.records.length} audit records`, 'info');
+                } else {
+                    auditRecords = [];
+                    displayRecords([]);
+                    showMessage('No audit records found', 'info');
+                }
+            } catch (e) {
+                console.error('Error loading audit log:', e);
+                showMessage('Failed to load audit log: ' + e.message, 'error');
+            }
+        }
+
+        // Display records in table
+        function displayRecords(records) {
+            const tbody = document.getElementById('auditTableBody');
+            tbody.innerHTML = '';
+
+            if (records.length === 0) {
+                document.getElementById('noRecords').classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('noRecords').classList.add('hidden');
+
+            records.forEach(record => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+
+                const changeTypeBadge = getChangeTypeBadge(record.changeType);
+                const statusChange = `<span class="font-medium text-red-600">${record.previousValue || '--'}</span> → <span class="font-medium text-green-600">${record.newValue}</span>`;
+
+                row.innerHTML = `
+                    <td class="px-4 py-3 text-xs text-gray-600">${formatDateTime(record.timestamp)}</td>
+                    <td class="px-4 py-3 font-medium">${record.adminName}</td>
+                    <td class="px-4 py-3 text-xs text-gray-600">${record.adminEmail}</td>
+                    <td class="px-4 py-3 font-mono font-bold">${record.studentId}</td>
+                    <td class="px-4 py-3">${record.studentName}</td>
+                    <td class="px-4 py-3 text-xs">${record.moduleName}</td>
+                    <td class="px-4 py-3 text-xs">${formatDate(record.lessonDate)}</td>
+                    <td class="px-4 py-3">${changeTypeBadge}</td>
+                    <td class="px-4 py-3">${statusChange}</td>
+                    <td class="px-4 py-3 text-xs text-gray-600">${record.reason || '--'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Render timeline view
+        function renderTimeline() {
+            const container = document.getElementById('timelineContainer');
+            container.innerHTML = '';
+
+            const groupedByDate = {};
+            auditRecords.forEach(record => {
+                const date = new Date(record.timestamp).toLocaleDateString();
+                if (!groupedByDate[date]) groupedByDate[date] = [];
+                groupedByDate[date].push(record);
+            });
+
+            Object.keys(groupedByDate).sort().reverse().forEach(date => {
+                const dateSection = document.createElement('div');
+                dateSection.className = 'mb-6';
+                dateSection.innerHTML = `<h4 class="font-bold text-lg mb-4 text-gray-700">${date}</h4>`;
+
+                const itemsContainer = document.createElement('div');
+                itemsContainer.className = 'space-y-4';
+
+                groupedByDate[date].forEach(record => {
+                    const item = document.createElement('div');
+                    item.className = 'timeline-item bg-gray-50 p-4 rounded-lg';
+                    item.innerHTML = `
+                        <div class="timeline-dot"></div>
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="font-bold text-gray-900">${record.adminName}</span>
+                                <span class="text-sm text-gray-500">modified attendance for</span>
+                                <span class="font-bold text-blue-600">${record.studentName} (${record.studentId})</span>
+                            </div>
+                            <span class="text-xs text-gray-500">${new Date(record.timestamp).toLocaleTimeString()}</span>
+                        </div>
+                        <div class="pl-4 border-l-2 border-gray-300 ml-2">
+                            <p class="text-sm text-gray-600 mb-1"><strong>Module:</strong> ${record.moduleName}</p>
+                            <p class="text-sm text-gray-600 mb-1"><strong>Lesson Date:</strong> ${formatDate(record.lessonDate)}</p>
+                            <p class="text-sm mb-2"><strong>Change:</strong> ${getChangeTypeBadge(record.changeType)}</p>
+                            <p class="text-sm"><strong>Status:</strong> <span class="text-red-600">${record.previousValue || '--'}</span> → <span class="text-green-600 font-bold">${record.newValue}</span></p>
+                            ${record.reason ? `<p class="text-sm text-gray-600 mt-2"><strong>Reason:</strong> ${record.reason}</p>` : ''}
+                            <p class="text-xs text-gray-500 mt-2"><strong>Admin Email:</strong> ${record.adminEmail}</p>
+                        </div>
+                    `;
+                    itemsContainer.appendChild(item);
+                });
+
+                dateSection.appendChild(itemsContainer);
+                container.appendChild(dateSection);
+            });
+        }
+
+        // Export to CSV
+        function exportToCSV() {
+            let csv = 'Timestamp,Admin Name,Admin Email,Student ID,Student Name,Module,Lesson Date,Change Type,Previous Value,New Value,Reason\n';
+
+            auditRecords.forEach(record => {
+                csv += `"${formatDateTime(record.timestamp)}","${record.adminName}","${record.adminEmail}","${record.studentId}","${record.studentName}","${record.moduleName}","${formatDate(record.lessonDate)}","${record.changeType}","${record.previousValue || ''}","${record.newValue}","${record.reason || ''}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `audit-log-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        }
+
+        // Utility functions
+        function getChangeTypeBadge(type) {
+            const badges = {
+                'mark_present': '<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">✓ Mark Present</span>',
+                'mark_absent': '<span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">✗ Mark Absent</span>',
+                'mark_late': '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">⏱ Mark Late</span>',
+                'mark_excused': '<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">🏥 Mark Excused</span>',
+                'approve_mc': '<span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">✓ Approve MC</span>',
+                'reject_mc': '<span class="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium">✗ Reject MC</span>'
+            };
+            return badges[type] || `<span class="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">${type}</span>`;
+        }
+
+        function formatDateTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.classList.remove('hidden', 'bg-green-100', 'border-green-400', 'text-green-700', 'bg-red-100', 'border-red-400', 'text-red-700', 'bg-blue-100', 'border-blue-400', 'text-blue-700');
+
+            if (type === 'success') {
+                messageDiv.classList.add('bg-green-100', 'border', 'border-green-400', 'text-green-700');
+            } else if (type === 'error') {
+                messageDiv.classList.add('bg-red-100', 'border', 'border-red-400', 'text-red-700');
+            } else {
+                messageDiv.classList.add('bg-blue-100', 'border', 'border-blue-400', 'text-blue-700');
+            }
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            loadModules();
+            loadAuditLog();
+        });
+    </script>
+</body>
+</html>

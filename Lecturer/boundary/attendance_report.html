@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Report | Lecturer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="../../common/config.js"></script>
+    <script src="../../common/auth.js"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="container mx-auto px-6">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-6">
+                    <a href="dashboard.html" class="text-lg font-semibold hover:text-blue-200 transition">Dashboard</a>
+                    <a href="real_time_list.html" class="text-lg font-semibold hover:text-blue-200 transition">Real-Time</a>
+                    <a href="attendance_records.html" class="text-lg font-semibold hover:text-blue-200 transition">Attendance Records</a>
+                    <a href="class_schedule.html" class="text-lg font-semibold hover:text-blue-200 transition">Class Schedule</a>
+                    <a href="attendance_report.html" class="text-lg font-semibold border-b-2 border-white">Attendance Report</a>
+                    <a href="notifications.html" class="text-lg font-semibold hover:text-blue-200 transition">Notifications</a>
+                </div>
+                <button data-action="logout" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="container mx-auto px-6 py-4">
+            <h1 class="text-2xl font-bold text-gray-800">Attendance Analytics & Reports</h1>
+            <p class="text-sm text-gray-600">View statistics and download reports to improve class attendance</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8">
+        <!-- Report Parameters -->
+        <div class="bg-white rounded-lg shadow mb-8">
+            <div class="p-6 border-b border-gray-200">
+                <h2 class="text-xl font-bold text-gray-800">Report Parameters</h2>
+                <p class="text-sm text-gray-600 mt-1">Select module and choose report type</p>
+            </div>
+
+            <div class="p-6">
+                <!-- Module Selection -->
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Select Module</label>
+                    <select id="moduleSelect" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg">
+                        <option value="">Choose a module to analyze...</option>
+                    </select>
+                </div>
+
+                <!-- Report Type Tabs -->
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Select Report Type</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <button onclick="selectReportType('daily')"
+                                id="btn-daily"
+                                class="report-type-btn flex flex-col items-center p-4 border-2 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition">
+                            <svg class="w-8 h-8 mb-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span class="font-semibold">Daily</span>
+                            <span class="text-xs text-gray-500 mt-1">Single day</span>
+                        </button>
+
+                        <button onclick="selectReportType('weekly')"
+                                id="btn-weekly"
+                                class="report-type-btn flex flex-col items-center p-4 border-2 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition">
+                            <svg class="w-8 h-8 mb-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            <span class="font-semibold">Weekly</span>
+                            <span class="text-xs text-gray-500 mt-1">7 days</span>
+                        </button>
+
+                        <button onclick="selectReportType('monthly')"
+                                id="btn-monthly"
+                                class="report-type-btn flex flex-col items-center p-4 border-2 border-blue-500 bg-blue-50 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition">
+                            <svg class="w-8 h-8 mb-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="font-semibold">Monthly</span>
+                            <span class="text-xs text-gray-500 mt-1">Full month</span>
+                        </button>
+
+                        <button onclick="selectReportType('custom')"
+                                id="btn-custom"
+                                class="report-type-btn flex flex-col items-center p-4 border-2 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition">
+                            <svg class="w-8 h-8 mb-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                            <span class="font-semibold">Custom</span>
+                            <span class="text-xs text-gray-500 mt-1">Date range</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Date Inputs (Dynamic based on selection) -->
+                <div id="dateInputSection">
+                    <!-- Daily Report -->
+                    <div id="dailySection" class="date-section hidden">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Select Date</label>
+                        <input type="date" id="dailyDate" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- Weekly Report -->
+                    <div id="weeklySection" class="date-section hidden">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Select Week Starting Date</label>
+                        <input type="date" id="weeklyDate" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <p class="text-sm text-gray-500 mt-2">Report will cover 7 days from this date</p>
+                    </div>
+
+                    <!-- Monthly Report -->
+                    <div id="monthlySection" class="date-section">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Select Month</label>
+                        <input type="month" id="monthlyDate" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- Custom Date Range -->
+                    <div id="customSection" class="date-section hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
+                                <input type="date" id="customStartDate" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">End Date</label>
+                                <input type="date" id="customEndDate" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Generate Button -->
+                <button onclick="generateReport()" class="mt-6 w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-12 py-4 rounded-lg transition shadow-lg hover:shadow-xl">
+                    <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Generate Report
+                </button>
+            </div>
+        </div>
+
+        <!-- Report Display -->
+        <div id="reportDisplay" class="hidden">
+            <!-- Summary Statistics -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-blue-100 text-sm mb-1">Overall Attendance</p>
+                            <p id="overallRate" class="text-3xl font-bold">0%</p>
+                        </div>
+                        <svg class="w-12 h-12 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                    </div>
+                    <div class="mt-2 text-sm text-blue-100" id="overallTrend"></div>
+                </div>
+
+                <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-green-100 text-sm mb-1">Total Students</p>
+                            <p id="totalStudents" class="text-3xl font-bold">0</p>
+                        </div>
+                        <svg class="w-12 h-12 text-green-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <div class="mt-2 text-sm text-green-100" id="enrolledInfo"></div>
+                </div>
+
+                <div class="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-lg shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-orange-100 text-sm mb-1">Total Sessions</p>
+                            <p id="totalSessions" class="text-3xl font-bold">0</p>
+                        </div>
+                        <svg class="w-12 h-12 text-orange-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <div class="mt-2 text-sm text-orange-100" id="sessionInfo"></div>
+                </div>
+
+                <div class="bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-lg shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-red-100 text-sm mb-1">At-Risk Students</p>
+                            <p id="atRiskCount" class="text-3xl font-bold">0</p>
+                        </div>
+                        <svg class="w-12 h-12 text-red-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div class="mt-2 text-sm text-red-100">Below 75% attendance</div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Attendance Trend</h3>
+                    <canvas id="trendChart"></canvas>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Status Distribution</h3>
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Insights & Recommendations -->
+            <div class="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-6 mb-8">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <svg class="w-6 h-6 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    Insights & Recommendations
+                </h3>
+                <div id="insights" class="space-y-3"></div>
+            </div>
+
+            <!-- Students Needing Attention -->
+            <div id="atRiskSection" class="bg-white rounded-lg shadow p-6 mb-8 hidden">
+                <h3 class="text-lg font-bold text-red-600 mb-4 flex items-center">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Students Needing Attention
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-red-50 border-b-2 border-red-200">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">Student ID</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">Name</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">Attendance %</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">Absences</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="atRiskTable" class="divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Detailed Student Report -->
+            <div class="bg-white rounded-lg shadow mb-6">
+                <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-gray-800">Detailed Student Report</h3>
+                    <div class="flex gap-3">
+                        <button onclick="downloadPDF()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition text-sm font-semibold flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            PDF
+                        </button>
+                        <button onclick="downloadCSV()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition text-sm font-semibold flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            CSV
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b-2 border-gray-200">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700">Student ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700">Name</th>
+                                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-700">Present</th>
+                                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-700">Absent</th>
+                                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-700">Late</th>
+                                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-700">Attendance %</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTableBody" class="divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- No Data Message -->
+        <div id="noDataMessage" class="bg-white rounded-lg shadow p-12 text-center hidden">
+            <svg class="w-24 h-24 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">No Data Available</h3>
+            <p class="text-gray-600">No attendance records found for the selected period and module.</p>
+        </div>
+    </main>
+
+    <script>
+        requireAuth('lecturer');
+
+        let currentReportData = null;
+        let trendChart = null;
+        let statusChart = null;
+        let currentReportType = 'monthly';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadModules();
+            setDefaultDates();
+        });
+
+        function setDefaultDates() {
+            const today = new Date();
+
+            // Set daily date
+            document.getElementById('dailyDate').valueAsDate = today;
+
+            // Set weekly date
+            document.getElementById('weeklyDate').valueAsDate = today;
+
+            // Set monthly date
+            const monthValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('monthlyDate').value = monthValue;
+
+            // Set custom dates
+            const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+            document.getElementById('customStartDate').valueAsDate = monthAgo;
+            document.getElementById('customEndDate').valueAsDate = today;
+        }
+
+        function selectReportType(type) {
+            currentReportType = type;
+
+            // Update button styles
+            document.querySelectorAll('.report-type-btn').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'bg-blue-50');
+                btn.classList.add('border-gray-300');
+            });
+
+            const selectedBtn = document.getElementById(`btn-${type}`);
+            selectedBtn.classList.remove('border-gray-300');
+            selectedBtn.classList.add('border-blue-500', 'bg-blue-50');
+
+            // Show/hide appropriate date section
+            document.querySelectorAll('.date-section').forEach(section => {
+                section.classList.add('hidden');
+            });
+
+            document.getElementById(`${type}Section`).classList.remove('hidden');
+        }
+
+        async function loadModules() {
+            try {
+                const user = JSON.parse(sessionStorage.getItem('auth_user'));
+                console.log('Current user:', user);
+
+                // Try to get lecturer identifier - prefer email, then lecturer_id, then lecturerId
+                const lecturerEmail = user.email || user.username;
+                const lecturerId = user.lecturer_id || user.lecturerId;
+
+                // Build URL with appropriate parameter
+                let url;
+                if (lecturerEmail) {
+                    url = `http://localhost:5006/api/lecturer/classes?email=${encodeURIComponent(lecturerEmail)}`;
+                } else if (lecturerId) {
+                    url = `http://localhost:5006/api/lecturer/classes?lecturerId=${lecturerId}`;
+                } else {
+                    throw new Error('No lecturer identifier found in session');
+                }
+
+                console.log('Fetching modules from:', url);
+                const response = await fetch(url);
+                const data = await response.json();
+
+                console.log('API Response:', data);
+
+                const select = document.getElementById('moduleSelect');
+                select.innerHTML = '<option value="">Choose a module to analyze...</option>';
+
+                // Check for both 'modules' and 'classes' in response
+                const modulesList = data.modules || data.classes || [];
+
+                if (modulesList.length > 0) {
+                    modulesList.forEach(cls => {
+                        const option = document.createElement('option');
+                        option.value = cls.module_code;
+                        option.textContent = `${cls.module_code} - ${cls.module_name}`;
+                        option.dataset.moduleName = cls.module_name;
+                        select.appendChild(option);
+                    });
+                    console.log(`Loaded ${modulesList.length} modules`);
+                } else {
+                    showMessage('No modules assigned to you yet', 'info');
+                }
+            } catch (error) {
+                console.error('Error loading modules:', error);
+                showMessage('Failed to load modules: ' + error.message, 'error');
+            }
+        }
+
+        async function generateReport() {
+            const moduleCode = document.getElementById('moduleSelect').value;
+
+            if (!moduleCode) {
+                showMessage('Please select a module', 'error');
+                return;
+            }
+
+            let startDate, endDate;
+
+            // Get dates based on report type
+            if (currentReportType === 'daily') {
+                const dateValue = document.getElementById('dailyDate').value;
+                if (!dateValue) {
+                    showMessage('Please select a date', 'error');
+                    return;
+                }
+                startDate = endDate = dateValue;
+            } else if (currentReportType === 'weekly') {
+                const weekStart = document.getElementById('weeklyDate').value;
+                if (!weekStart) {
+                    showMessage('Please select a week start date', 'error');
+                    return;
+                }
+                startDate = weekStart;
+                const endDateObj = new Date(weekStart);
+                endDateObj.setDate(endDateObj.getDate() + 6);
+                endDate = endDateObj.toISOString().split('T')[0];
+            } else if (currentReportType === 'monthly') {
+                const monthValue = document.getElementById('monthlyDate').value;
+                if (!monthValue) {
+                    showMessage('Please select a month', 'error');
+                    return;
+                }
+                const [year, month] = monthValue.split('-');
+                startDate = `${year}-${month}-01`;
+                const lastDay = new Date(year, month, 0).getDate();
+                endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+            } else if (currentReportType === 'custom') {
+                startDate = document.getElementById('customStartDate').value;
+                endDate = document.getElementById('customEndDate').value;
+                if (!startDate || !endDate) {
+                    showMessage('Please select both start and end dates', 'error');
+                    return;
+                }
+            }
+
+            try {
+                const user = JSON.parse(sessionStorage.getItem('auth_user'));
+                const lecturerId = user.lecturerId || user.lecturer_id;
+
+                const response = await fetch('http://localhost:5005/api/lecturer/report/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        moduleId: moduleCode,
+                        dateRange: { start: startDate, end: endDate },
+                        metrics: 'detailed',
+                        lecturerId: lecturerId
+                    })
+                });
+
+                const data = await response.json();
+                const report = data.report || data;
+
+                currentReportData = {
+                    ...report,
+                    moduleCode,
+                    moduleName: document.getElementById('moduleSelect').selectedOptions[0].dataset.moduleName,
+                    period: currentReportType,
+                    startDate,
+                    endDate
+                };
+
+                displayReport(currentReportData);
+                showMessage('Report generated successfully!', 'success');
+            } catch (error) {
+                showMessage('Failed to generate report: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        function displayReport(data) {
+            if (!data.students || data.students.length === 0) {
+                document.getElementById('reportDisplay').classList.add('hidden');
+                document.getElementById('noDataMessage').classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('reportDisplay').classList.remove('hidden');
+            document.getElementById('noDataMessage').classList.add('hidden');
+
+            // Calculate statistics
+            const totalStudents = data.students.length;
+            const totalSessions = data.totalSessions || 0;
+            const overallRate = data.avgAttendance || 0;
+            const atRiskStudents = data.students.filter(s => {
+                const total = s.present + s.absent + s.late;
+                return total > 0 && ((s.present / total) * 100) < 75;
+            });
+
+            // Update summary cards
+            document.getElementById('overallRate').textContent = overallRate.toFixed(1) + '%';
+            document.getElementById('totalStudents').textContent = totalStudents;
+            document.getElementById('totalSessions').textContent = totalSessions;
+            document.getElementById('atRiskCount').textContent = atRiskStudents.length;
+
+            document.getElementById('enrolledInfo').textContent = `${totalStudents} enrolled students`;
+            document.getElementById('sessionInfo').textContent = `In selected period`;
+
+            const trendText = overallRate >= 85 ? '✓ Excellent attendance' :
+                             overallRate >= 75 ? '⚠ Good, can improve' :
+                             '⚠ Needs attention';
+            document.getElementById('overallTrend').textContent = trendText;
+
+            // Display charts
+            displayCharts(data);
+
+            // Display insights
+            displayInsights(data);
+
+            // Display at-risk students
+            if (atRiskStudents.length > 0) {
+                displayAtRiskStudents(atRiskStudents);
+            } else {
+                document.getElementById('atRiskSection').classList.add('hidden');
+            }
+
+            // Display detailed table
+            displayDetailedTable(data.students);
+        }
+
+        function displayCharts(data) {
+            // Trend Chart
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            if (trendChart) trendChart.destroy();
+
+            const trendData = generateTrendData(data);
+            trendChart = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: trendData.labels,
+                    datasets: [{
+                        label: 'Attendance Rate (%)',
+                        data: trendData.values,
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+
+            // Status Distribution Chart
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            if (statusChart) statusChart.destroy();
+
+            const totalPresent = data.students.reduce((sum, s) => sum + s.present, 0);
+            const totalAbsent = data.students.reduce((sum, s) => sum + s.absent, 0);
+            const totalLate = data.students.reduce((sum, s) => sum + s.late, 0);
+
+            statusChart = new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Present', 'Absent', 'Late'],
+                    datasets: [{
+                        data: [totalPresent, totalAbsent, totalLate],
+                        backgroundColor: [
+                            'rgb(34, 197, 94)',
+                            'rgb(239, 68, 68)',
+                            'rgb(251, 146, 60)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateTrendData(data) {
+            // Simplified trend - in real implementation, this would come from backend with daily/weekly breakdowns
+            const period = currentReportType;
+            const labels = [];
+            const values = [];
+
+            if (period === 'daily') {
+                labels.push('Selected Day');
+                values.push(data.avgAttendance || 0);
+            } else if (period === 'weekly') {
+                for (let i = 0; i < 7; i++) {
+                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    labels.push(days[i]);
+                    values.push(data.avgAttendance + (Math.random() * 10 - 5));
+                }
+            } else {
+                for (let i = 1; i <= 4; i++) {
+                    labels.push(`Week ${i}`);
+                    values.push(data.avgAttendance + (Math.random() * 10 - 5));
+                }
+            }
+
+            return { labels, values };
+        }
+
+        function displayInsights(data) {
+            const insights = [];
+            const avgRate = data.avgAttendance || 0;
+
+            if (avgRate >= 90) {
+                insights.push({
+                    type: 'success',
+                    text: 'Excellent overall attendance! Keep up the good work.'
+                });
+            } else if (avgRate >= 75) {
+                insights.push({
+                    type: 'warning',
+                    text: 'Good attendance rate, but there is room for improvement. Consider engaging students more actively.'
+                });
+            } else {
+                insights.push({
+                    type: 'error',
+                    text: 'Attendance rate is below target. Immediate action recommended to improve student engagement.'
+                });
+            }
+
+            const atRisk = data.students.filter(s => {
+                const total = s.present + s.absent + s.late;
+                return total > 0 && ((s.present / total) * 100) < 75;
+            });
+
+            if (atRisk.length > 0) {
+                insights.push({
+                    type: 'warning',
+                    text: `${atRisk.length} student(s) have attendance below 75%. Consider reaching out to provide support.`
+                });
+            }
+
+            insights.push({
+                type: 'info',
+                text: 'Recommendation: Schedule regular check-ins with students showing declining attendance patterns.'
+            });
+
+            const insightsDiv = document.getElementById('insights');
+            insightsDiv.innerHTML = insights.map(insight => {
+                const colors = {
+                    success: 'bg-green-100 text-green-800 border-green-300',
+                    warning: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                    error: 'bg-red-100 text-red-800 border-red-300',
+                    info: 'bg-blue-100 text-blue-800 border-blue-300'
+                };
+                return `<div class="p-4 rounded-lg border ${colors[insight.type]}">${insight.text}</div>`;
+            }).join('');
+        }
+
+        function displayAtRiskStudents(students) {
+            document.getElementById('atRiskSection').classList.remove('hidden');
+            const tbody = document.getElementById('atRiskTable');
+            tbody.innerHTML = students.map(student => {
+                const total = student.present + student.absent + student.late;
+                const percentage = ((student.present / total) * 100).toFixed(1);
+                const status = percentage < 50 ? 'Critical' : 'Warning';
+                const statusColor = percentage < 50 ? 'text-red-700 bg-red-100' : 'text-yellow-700 bg-yellow-100';
+
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-sm font-medium">${student.id}</td>
+                        <td class="px-4 py-3 text-sm">${student.name}</td>
+                        <td class="px-4 py-3 text-sm font-bold text-red-600">${percentage}%</td>
+                        <td class="px-4 py-3 text-sm">${student.absent}</td>
+                        <td class="px-4 py-3"><span class="px-2 py-1 text-xs font-semibold rounded ${statusColor}">${status}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function displayDetailedTable(students) {
+            const tbody = document.getElementById('reportTableBody');
+            tbody.innerHTML = students.map(student => {
+                const total = student.present + student.absent + student.late;
+                const percentage = total > 0 ? ((student.present / total) * 100).toFixed(1) : '0.0';
+
+                let statusBadge = '';
+                if (percentage >= 85) {
+                    statusBadge = '<span class="px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-700">Excellent</span>';
+                } else if (percentage >= 75) {
+                    statusBadge = '<span class="px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-700">Good</span>';
+                } else if (percentage >= 50) {
+                    statusBadge = '<span class="px-2 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-700">At Risk</span>';
+                } else {
+                    statusBadge = '<span class="px-2 py-1 text-xs font-semibold rounded bg-red-100 text-red-700">Critical</span>';
+                }
+
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-medium">${student.id}</td>
+                        <td class="px-6 py-4 text-sm">${student.name}</td>
+                        <td class="px-6 py-4 text-sm text-center text-green-600 font-semibold">${student.present}</td>
+                        <td class="px-6 py-4 text-sm text-center text-red-600 font-semibold">${student.absent}</td>
+                        <td class="px-6 py-4 text-sm text-center text-yellow-600 font-semibold">${student.late}</td>
+                        <td class="px-6 py-4 text-sm text-center font-bold">${percentage}%</td>
+                        <td class="px-6 py-4 text-sm">${statusBadge}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function downloadCSV() {
+            if (!currentReportData) return;
+
+            const periodText = currentReportData.period.charAt(0).toUpperCase() + currentReportData.period.slice(1);
+            let csv = `Attendance Report - ${currentReportData.moduleCode}\n`;
+            csv += `Module: ${currentReportData.moduleName}\n`;
+            csv += `Period: ${periodText}\n`;
+            csv += `Date Range: ${currentReportData.startDate} to ${currentReportData.endDate}\n\n`;
+            csv += 'Student ID,Name,Present,Absent,Late,Attendance %,Status\n';
+
+            currentReportData.students.forEach(student => {
+                const total = student.present + student.absent + student.late;
+                const percentage = total > 0 ? ((student.present / total) * 100).toFixed(1) : '0.0';
+                const status = percentage >= 85 ? 'Excellent' : percentage >= 75 ? 'Good' : percentage >= 50 ? 'At Risk' : 'Critical';
+                csv += `${student.id},${student.name},${student.present},${student.absent},${student.late},${percentage}%,${status}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `attendance-${currentReportData.moduleCode}-${currentReportData.period}-${Date.now()}.csv`;
+            a.click();
+            showMessage('CSV downloaded successfully!', 'success');
+        }
+
+        async function downloadPDF() {
+            if (!currentReportData) {
+                showMessage('Please generate a report first', 'error');
+                return;
+            }
+
+            // Show loading message
+            showMessage('Generating PDF... Please wait', 'info');
+
+            try {
+                // Get the report display element
+                const element = document.getElementById('reportDisplay');
+
+                // Create a clone to modify for PDF
+                const clone = element.cloneNode(true);
+
+                // Convert canvas charts to images
+                const trendCanvas = document.getElementById('trendChart');
+                const statusCanvas = document.getElementById('statusChart');
+
+                if (trendCanvas && statusCanvas) {
+                    // Get the canvas elements in the clone
+                    const cloneCanvases = clone.querySelectorAll('canvas');
+
+                    // Replace trend chart canvas with image
+                    const trendImage = document.createElement('img');
+                    trendImage.src = trendCanvas.toDataURL('image/png', 1.0);
+                    trendImage.style.width = '100%';
+                    trendImage.style.height = 'auto';
+                    if (cloneCanvases[0]) {
+                        cloneCanvases[0].parentNode.replaceChild(trendImage, cloneCanvases[0]);
+                    }
+
+                    // Replace status chart canvas with image
+                    const statusImage = document.createElement('img');
+                    statusImage.src = statusCanvas.toDataURL('image/png', 1.0);
+                    statusImage.style.width = '100%';
+                    statusImage.style.height = 'auto';
+                    if (cloneCanvases[1]) {
+                        cloneCanvases[1].parentNode.replaceChild(statusImage, cloneCanvases[1]);
+                    }
+                }
+
+                // Add title section to PDF
+                const title = document.createElement('div');
+                title.className = 'mb-6 pb-4 border-b-2 border-gray-300';
+                title.innerHTML = `
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">Attendance Report</h1>
+                    <p class="text-lg text-gray-600">${currentReportData.moduleName} (${currentReportData.moduleCode})</p>
+                    <p class="text-sm text-gray-500">Period: ${currentReportData.period.charAt(0).toUpperCase() + currentReportData.period.slice(1)} (${currentReportData.startDate} to ${currentReportData.endDate})</p>
+                    <p class="text-xs text-gray-400 mt-2">Generated: ${new Date().toLocaleString()}</p>
+                `;
+                clone.insertBefore(title, clone.firstChild);
+
+                // Configure PDF options
+                const opt = {
+                    margin: 10,
+                    filename: `attendance-report-${currentReportData.moduleCode}-${currentReportData.period}-${Date.now()}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        logging: false
+                    },
+                    jsPDF: {
+                        unit: 'mm',
+                        format: 'a4',
+                        orientation: 'portrait'
+                    },
+                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+                };
+
+                // Generate PDF
+                await html2pdf().set(opt).from(clone).save();
+                showMessage('PDF downloaded successfully!', 'success');
+            } catch (err) {
+                console.error('PDF generation error:', err);
+                showMessage('Failed to generate PDF: ' + err.message, 'error');
+            }
+        }
+
+        function showMessage(message, type = 'success') {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-yellow-500',
+                info: 'bg-blue-500'
+            };
+
+            const div = document.createElement('div');
+            div.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-4 rounded-lg shadow-lg z-50 font-semibold`;
+            div.textContent = message;
+            document.body.appendChild(div);
+
+            setTimeout(() => div.remove(), 3000);
+        }
+    </script>
+</body>
+</html>

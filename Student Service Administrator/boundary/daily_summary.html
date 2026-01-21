@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Summary - Student Service Administrator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../../common/config.js"></script>
+    <script src="../../common/auth.js"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Daily Summary Dashboard (US34)</h1>
+            <div class="flex items-center space-x-4">
+                <a href="./dashboard.html" class="bg-gray-700 hover:bg-gray-800 px-4 py-2 rounded-lg transition">Back to Dashboard</a>
+                <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <div id="loadingMessage" class="text-center text-gray-600 text-lg">Loading attendance data...</div>
+
+        <div id="errorMessage" class="hidden p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg mb-6"></div>
+
+        <!-- Summary Cards -->
+        <div id="summaryCards" class="hidden grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h3 class="text-gray-600 text-sm font-semibold mb-2">Overall Attendance Rate</h3>
+                <p id="attendanceRate" class="text-4xl font-bold text-green-600">--</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h3 class="text-gray-600 text-sm font-semibold mb-2">Students Present</h3>
+                <p id="presentCount" class="text-4xl font-bold text-blue-600">--</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h3 class="text-gray-600 text-sm font-semibold mb-2">Students Absent</h3>
+                <p id="absentCount" class="text-4xl font-bold text-red-600">--</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h3 class="text-gray-600 text-sm font-semibold mb-2">Students Late</h3>
+                <p id="lateCount" class="text-4xl font-bold text-orange-600">--</p>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div id="chartsContainer" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Attendance Distribution</h3>
+                <canvas id="attendanceChart"></canvas>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Trends (Last 7 Days)</h3>
+                <canvas id="trendsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Peak Absence Days -->
+        <div id="peakAbsenceContainer" class="hidden mt-8">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Peak Absence Days</h3>
+                <div id="peakAbsenceDays" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Systemic Issues Alert -->
+        <div id="systemicIssuesContainer" class="hidden mt-8">
+            <div class="bg-yellow-50 p-6 rounded-lg shadow-lg border-l-4 border-yellow-400">
+                <h3 class="text-lg font-bold text-yellow-800 mb-3">⚠️ Systemic Issues Identified</h3>
+                <ul id="systemicIssuesList" class="list-disc list-inside space-y-1 text-yellow-700"></ul>
+            </div>
+        </div>
+
+        <!-- Export Options -->
+        <div class="mt-8 flex space-x-4">
+            <button id="exportBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition">
+                📥 Export Summary
+            </button>
+            <button id="refreshBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition">
+                🔄 Refresh Data
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        requireAuth('student-service-admin');
+
+        let attendanceChart, trendsChart;
+
+        async function loadDailySummary() {
+            try {
+                const apiBase = window.API_ENDPOINTS?.['student-service-admin'] || 'http://localhost:5008';
+                const response = await fetch(apiBase + '/api/attendance/daily-summary', {
+                    headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('auth_user') }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch attendance data');
+                }
+
+                const data = await response.json();
+                if (data.ok) {
+                    displaySummary(data);
+                } else {
+                    throw new Error(data.message || 'Failed to load summary');
+                }
+            } catch (e) {
+                console.error('Error loading daily summary:', e);
+                document.getElementById('loadingMessage').classList.add('hidden');
+                document.getElementById('errorMessage').textContent = 'Failed to load attendance data: ' + e.message;
+                document.getElementById('errorMessage').classList.remove('hidden');
+            }
+        }
+
+        function displaySummary(data) {
+            // Update cards
+            const attendanceRate = parseFloat(data.attendanceRate) || 0;
+            document.getElementById('attendanceRate').textContent = attendanceRate.toFixed(1) + '%';
+            document.getElementById('presentCount').textContent = data.presentCount || 0;
+            document.getElementById('absentCount').textContent = data.absentCount || 0;
+            document.getElementById('lateCount').textContent = data.lateCount || 0;
+
+            // Show cards and charts
+            document.getElementById('loadingMessage').classList.add('hidden');
+            document.getElementById('summaryCards').classList.remove('hidden');
+            document.getElementById('chartsContainer').classList.remove('hidden');
+
+            // Attendance Distribution Chart
+            const ctx1 = document.getElementById('attendanceChart').getContext('2d');
+            if (attendanceChart) attendanceChart.destroy();
+            attendanceChart = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Present', 'Absent', 'Late'],
+                    datasets: [{
+                        data: [
+                            data.distribution?.present || 0, 
+                            data.distribution?.absent || 0, 
+                            data.distribution?.late || 0
+                        ],
+                        backgroundColor: ['#10b981', '#ef4444', '#f97316']
+                    }]
+                },
+                options: { responsive: true }
+            });
+
+            // Trends Chart
+            const ctx2 = document.getElementById('trendsChart').getContext('2d');
+            if (trendsChart) trendsChart.destroy();
+            trendsChart = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: (data.trends || []).map(t => t.date),
+                    datasets: [{
+                        label: 'Attendance Rate %',
+                        data: (data.trends || []).map(t => parseFloat(t.rate) || 0),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+
+            // Peak Absence Days
+            if (data.peakAbsenceDays && data.peakAbsenceDays.length > 0) {
+                document.getElementById('peakAbsenceContainer').classList.remove('hidden');
+                const daysHtml = data.peakAbsenceDays.map(day => 
+                    `<div class="flex justify-between p-3 bg-gray-50 rounded">
+                        <span>${day.day}</span>
+                        <span class="font-bold text-red-600">${day.percentage}% absence rate (${day.absences} students)</span>
+                    </div>`
+                ).join('');
+                document.getElementById('peakAbsenceDays').innerHTML = daysHtml;
+            }
+
+            // Systemic Issues
+            if (data.systemicIssues && data.systemicIssues.length > 0) {
+                document.getElementById('systemicIssuesContainer').classList.remove('hidden');
+                const issuesHtml = data.systemicIssues.map(issue => `<li>${issue}</li>`).join('');
+                document.getElementById('systemicIssuesList').innerHTML = issuesHtml;
+            }
+        }
+
+        // Event listeners
+        document.getElementById('refreshBtn').addEventListener('click', loadDailySummary);
+
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const data = {
+                timestamp: new Date().toISOString(),
+                attendanceRate: document.getElementById('attendanceRate').textContent,
+                present: document.getElementById('presentCount').textContent,
+                absent: document.getElementById('absentCount').textContent,
+                late: document.getElementById('lateCount').textContent
+            };
+
+            const csv = Object.keys(data).map(key => `${key},${data[key]}`).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `daily-summary-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        });
+
+        // Load data on page load
+        loadDailySummary();
+
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            logout();
+        });
+    </script>
+</body>
+</html>

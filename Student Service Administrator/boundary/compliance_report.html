@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compliance Report - Student Service Administrator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../../common/config.js"></script>
+    <script src="../../common/auth.js"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Compliance Report (US32)</h1>
+            <div class="flex items-center space-x-4">
+                <a href="./dashboard.html" class="bg-gray-700 hover:bg-gray-800 px-4 py-2 rounded-lg transition">Back to Dashboard</a>
+                <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Compliance Report - Students Below Threshold</h2>
+            <p class="text-gray-600 mb-6">Generate a list of all students whose attendance falls below the required threshold for disciplinary action.</p>
+
+            <!-- Filters -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Attendance Threshold (%)</label>
+                    <input
+                        type="number"
+                        id="thresholdInput"
+                        value="75"
+                        min="0"
+                        max="100"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Module</label>
+                    <select id="moduleFilter" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">All Modules</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="generateReportBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition mb-6">
+                📊 Generate Report
+            </button>
+        </div>
+
+        <!-- Message -->
+        <div id="message" class="hidden p-4 rounded-lg mb-6"></div>
+
+        <!-- Summary Stats -->
+        <div id="statsContainer" class="hidden grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h3 class="text-gray-600 text-sm font-semibold mb-2">Total Students Below Threshold</h3>
+                <p id="totalBelowThreshold" class="text-4xl font-bold text-red-600">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h3 class="text-gray-600 text-sm font-semibold mb-2">Critical Cases (&lt;60%)</h3>
+                <p id="criticalCount" class="text-4xl font-bold text-red-700">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h3 class="text-gray-600 text-sm font-semibold mb-2">Warning Cases (60-75%)</h3>
+                <p id="warningCount" class="text-4xl font-bold text-orange-600">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h3 class="text-gray-600 text-sm font-semibold mb-2">Average Attendance</h3>
+                <p id="averageAttendance" class="text-4xl font-bold text-blue-600">0%</p>
+            </div>
+        </div>
+
+        <!-- Report Table -->
+        <div id="reportTableContainer" class="hidden bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Non-Compliant Students</h3>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-200">
+                        <tr>
+                            <th class="px-4 py-2 text-left">Student ID</th>
+                            <th class="px-4 py-2 text-left">Name</th>
+                            <th class="px-4 py-2 text-left">Module</th>
+                            <th class="px-4 py-2 text-center">Attendance %</th>
+                            <th class="px-4 py-2 text-center">Status</th>
+                            <th class="px-4 py-2 text-center">Total Classes</th>
+                            <th class="px-4 py-2 text-center">Classes Attended</th>
+                            <th class="px-4 py-2 text-center">Classes Missed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportTableBody" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+
+            <div class="mt-6">
+                <button id="exportReportBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition">
+                    📥 Export as CSV
+                </button>
+            </div>
+        </div>
+
+        <!-- Recommendations -->
+        <div id="recommendationsContainer" class="hidden bg-yellow-50 rounded-lg shadow-lg p-6 border-l-4 border-yellow-400">
+            <h3 class="text-xl font-bold text-yellow-800 mb-4">Recommended Actions</h3>
+            <ul id="recommendationsList" class="list-disc list-inside space-y-2 text-yellow-800"></ul>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        requireAuth('student-service-admin');
+
+        // Store report data globally
+        let currentReportData = null;
+        let currentThreshold = 75;
+
+        // Load modules on page load
+        async function loadModules() {
+            try {
+                const apiBase = window.API_ENDPOINTS?.['student-service-admin'] || 'http://localhost:5008';
+                const response = await fetch(apiBase + '/api/ssa/modules');
+                const data = await response.json();
+
+                if (data.ok && data.modules) {
+                    const moduleFilter = document.getElementById('moduleFilter');
+                    data.modules.forEach(module => {
+                        const option = document.createElement('option');
+                        option.value = module.id;
+                        option.textContent = `${module.module_code} - ${module.module_name}`;
+                        moduleFilter.appendChild(option);
+                    });
+                }
+            } catch (e) {
+                console.error('Error loading modules:', e);
+            }
+        }
+
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadModules();
+        });
+
+        // Generate report
+        document.getElementById('generateReportBtn').addEventListener('click', async () => {
+            const threshold = parseInt(document.getElementById('thresholdInput').value);
+            const moduleId = document.getElementById('moduleFilter').value;
+
+            // Validate that a module is selected
+            if (!moduleId) {
+                showMessage('Please select a module before generating the report', 'error');
+                return;
+            }
+
+            try {
+                const apiBase = window.API_ENDPOINTS?.['student-service-admin'] || 'http://localhost:5008';
+                const response = await fetch(apiBase + `/api/compliance/report?threshold=${threshold}&module_id=${moduleId}`, {
+                    headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('auth_user') }
+                });
+
+                if (!response.ok) throw new Error('Failed to generate report');
+                const data = await response.json();
+                displayReport(data.students, threshold);
+            } catch (e) {
+                console.error('Error generating compliance report:', e);
+                showMessage('Failed to generate compliance report: ' + e.message, 'error');
+            }
+        });
+
+        function displayReport(students, threshold) {
+            // Store data globally for Save Report button
+            currentReportData = students;
+            currentThreshold = threshold;
+
+            const tbody = document.getElementById('reportTableBody');
+            tbody.innerHTML = '';
+
+            const critical = students.filter(s => s.attendance < 60).length;
+            const warning = students.filter(s => s.attendance >= 60 && s.attendance <= threshold).length;
+            const avgAttendance = (students.reduce((sum, s) => sum + s.attendance, 0) / students.length).toFixed(1);
+
+            // Update stats
+            document.getElementById('totalBelowThreshold').textContent = students.length;
+            document.getElementById('criticalCount').textContent = critical;
+            document.getElementById('warningCount').textContent = warning;
+            document.getElementById('averageAttendance').textContent = avgAttendance + '%';
+
+            // Populate table
+            students.forEach(student => {
+                const row = document.createElement('tr');
+                const statusBgColor = student.severity === 'critical' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800';
+
+                row.innerHTML = `
+                    <td class="px-4 py-3">${student.id}</td>
+                    <td class="px-4 py-3">${student.name}</td>
+                    <td class="px-4 py-3">${student.department}</td>
+                    <td class="px-4 py-3 text-center font-bold text-red-600">${student.attendance}%</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="px-3 py-1 rounded text-sm font-bold ${statusBgColor}">
+                            ${student.severity.toUpperCase()}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-center">${student.totalClasses || 0}</td>
+                    <td class="px-4 py-3 text-center">${student.classesAttended}</td>
+                    <td class="px-4 py-3 text-center">${student.classesMissed}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Show recommendations
+            showRecommendations(students, threshold);
+
+            // Show containers
+            document.getElementById('statsContainer').classList.remove('hidden');
+            document.getElementById('reportTableContainer').classList.remove('hidden');
+            document.getElementById('recommendationsContainer').classList.remove('hidden');
+
+            showMessage(`Report generated: ${students.length} students below ${threshold}% attendance.`, 'success');
+        }
+
+        function showRecommendations(students, threshold) {
+            const recommendations = [];
+
+            const critical = students.filter(s => s.attendance < 60).length;
+            if (critical > 0) {
+                recommendations.push(`${critical} students in CRITICAL status (&lt;60%). Immediate intervention required.`);
+            }
+
+            const engineering = students.filter(s => s.department === 'Engineering').length;
+            if (engineering > students.length * 0.3) {
+                recommendations.push('Engineering department shows higher-than-average non-compliance. Consider departmental follow-up.');
+            }
+
+            recommendations.push(`Contact ${critical} critical and ${students.filter(s => s.severity === 'warning').length} warning students this week.`);
+            recommendations.push('Prepare warning letters for official notification.');
+            recommendations.push('Schedule counseling sessions for students with persistent attendance issues.');
+
+            const list = document.getElementById('recommendationsList');
+            list.innerHTML = recommendations.map(r => `<li>${r}</li>`).join('');
+        }
+
+        // Export report
+        document.getElementById('exportReportBtn').addEventListener('click', () => {
+            const rows = document.querySelectorAll('#reportTableBody tr');
+            let csv = 'StudentID,Name,Department,AttendancePercentage,Status,TotalClasses,ClassesAttended,ClassesMissed\n';
+
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const rowData = [
+                    cells[0].textContent,
+                    cells[1].textContent,
+                    cells[2].textContent,
+                    cells[3].textContent,
+                    cells[4].textContent.replace(/\n/g, ''),
+                    cells[5].textContent,
+                    cells[6].textContent,
+                    cells[7].textContent
+                ].map(cell => `"${cell}"`).join(',');
+                csv += rowData + '\n';
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `compliance-report-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        });
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.classList.remove('hidden', 'bg-green-100', 'border-green-400', 'text-green-700', 'bg-red-100', 'border-red-400', 'text-red-700', 'bg-blue-100', 'border-blue-400', 'text-blue-700');
+
+            if (type === 'success') {
+                messageDiv.classList.add('bg-green-100', 'border', 'border-green-400', 'text-green-700');
+            } else if (type === 'error') {
+                messageDiv.classList.add('bg-red-100', 'border', 'border-red-400', 'text-red-700');
+            } else {
+                messageDiv.classList.add('bg-blue-100', 'border', 'border-blue-400', 'text-blue-700');
+            }
+        }
+
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            logout();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(lsof:*)",
+      "Bash(/Applications/XAMPP/xamppfiles/htdocs/FYP-Team-15/.venv/bin/python3:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}

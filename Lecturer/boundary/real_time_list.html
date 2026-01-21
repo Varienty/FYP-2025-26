@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Student List | Lecturer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../../common/config.js"></script>
+    <script src="../../common/auth.js"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="container mx-auto px-6">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-6">
+                    <a href="dashboard.html" class="text-lg font-semibold hover:text-blue-200 transition">Dashboard</a>
+                    <a href="real_time_list.html" class="text-lg font-semibold border-b-2 border-white">Real-Time</a>
+                    <a href="attendance_records.html" class="text-lg font-semibold hover:text-blue-200 transition">Attendance Records</a>
+                    <a href="class_schedule.html" class="text-lg font-semibold hover:text-blue-200 transition">Class Schedule</a>
+                    <a href="attendance_report.html" class="text-lg font-semibold hover:text-blue-200 transition">Attendance Report</a>
+                    <a href="notifications.html" class="text-lg font-semibold hover:text-blue-200 transition">Notifications</a>
+                </div>
+                <button data-action="logout" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition">Logout</button>
+            </div>
+        </div>
+    </nav>
+    <!-- Header -->
+    <header class="bg-blue-600 text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold">Real-Time Automatic Attendance</h1>
+                    <p class="text-sm text-blue-100">Automatic face detection and attendance tracking</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8">
+        <!-- Session Info Card -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">Automatic Detection</h2>
+                    <p class="text-sm text-gray-600">Select room to auto-start attendance tracking</p>
+                </div>
+                <div id="sessionStatus" class="flex items-center">
+                    <div class="bg-gray-400 rounded-full w-3 h-3 mr-2"></div>
+                    <span class="text-sm font-semibold text-gray-700">No Room Selected</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Room Number *</label>
+                    <select id="roomSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select Room</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Current Class</label>
+                    <input type="text" id="classDisplay" readonly class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" value="-" placeholder="Auto-detected">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Class Date</label>
+                    <input type="text" id="dateDisplay" readonly class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" value="-" placeholder="Auto-detected">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Class Time</label>
+                    <input type="text" id="timeDisplay" readonly class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" value="-" placeholder="Auto-detected">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Current Time</label>
+                    <input type="text" id="currentTimeDisplay" readonly class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" value="-">
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Total Students</p>
+                        <p id="totalStudents" class="text-3xl font-bold text-gray-800">0</p>
+                    </div>
+                    <div class="bg-blue-100 p-3 rounded-full">
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Detected</p>
+                        <p id="detectedCount" class="text-3xl font-bold text-green-600">0</p>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-full">
+                        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Not Detected</p>
+                        <p id="notDetectedCount" class="text-3xl font-bold text-red-600">0</p>
+                    </div>
+                    <div class="bg-red-100 p-3 rounded-full">
+                        <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Attendance %</p>
+                        <p id="attendancePercent" class="text-3xl font-bold text-purple-600">0%</p>
+                    </div>
+                    <div class="bg-purple-100 p-3 rounded-full">
+                        <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student List Table -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-bold text-gray-800">Detected Students</h2>
+                    <button id="refreshBtn" class="text-blue-600 hover:text-blue-700 font-semibold text-sm">
+                        <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Student ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Detection Time</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody" class="divide-y divide-gray-200">
+                        <tr id="emptyRow">
+                            <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                                <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                <p class="text-lg font-semibold">No active session</p>
+                                <p class="text-sm">Start a session to detect students</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // US14 - Real-Time Automatic Attendance (Sequence Diagram #14)
+        requireAuth('lecturer');
+
+        let sessionActive = false;
+        let sessionInterval = null;
+        let detectedStudents = [];
+        let enrolledStudents = [];
+        let currentClass = null;
+        let lecturerSchedule = [];
+        let clockInterval = null;
+
+        // Update current time display
+        function updateCurrentTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('currentTimeDisplay').value = timeString;
+        }
+
+        // Load lecturer's schedule and extract unique rooms
+        async function loadScheduleAndRooms() {
+            const user = getCurrentUser();
+            console.log('Current user:', user);
+
+            try {
+                // Use facial recognition API to get current session
+                const response = await fetch(`http://127.0.0.1:5011/api/facial-recognition/sessions/current`);
+
+                console.log('Response status:', response.status);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Session data:', data);
+                    const roomSelect = document.getElementById('roomSelect');
+
+                    if (data.ok && data.session) {
+                        // Add the room from current session
+                        const room = data.session.room;
+                        const option = document.createElement('option');
+                        option.value = room;
+                        option.textContent = room;
+                        roomSelect.appendChild(option);
+                        console.log('Added room option:', room);
+
+                        // Auto-select and load this room
+                        roomSelect.value = room;
+                        handleRoomSelection();
+                    } else {
+                        console.warn('No timetable entries found');
+                        // Add default room for testing
+                        addDefaultRoom(roomSelect);
+                    }
+                } else {
+                    console.error('API request failed with status:', response.status);
+                    // Add default room for testing
+                    const roomSelect = document.getElementById('roomSelect');
+                    addDefaultRoom(roomSelect);
+                }
+            } catch (error) {
+                console.error('Error loading schedule:', error);
+                // Add default room for testing
+                const roomSelect = document.getElementById('roomSelect');
+                addDefaultRoom(roomSelect);
+            }
+        }
+
+        // Helper function to convert day number to name
+        function getDayName(dayNumber) {
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            return days[dayNumber] || 'Monday';
+        }
+
+        // Add default room if API fails
+        function addDefaultRoom(roomSelect) {
+            const defaultRoom = 'Room A101';
+            const option = document.createElement('option');
+            option.value = defaultRoom;
+            option.textContent = defaultRoom;
+            roomSelect.appendChild(option);
+            console.log('Added default room:', defaultRoom);
+
+            // Get today's day name for the schedule
+            const today = new Date();
+            const todayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+
+            // Also add to schedule for today
+            lecturerSchedule.push({
+                room: defaultRoom,
+                day: todayName,
+                startTime: '01:23',
+                endTime: '23:00',
+                moduleCode: 'CS101',
+                moduleName: 'Introduction to Programming',
+                moduleId: 1,
+                enrolledCount: 12  // Add enrolled count
+            });
+
+            console.log(`Added default schedule entry for ${todayName}`);
+        }
+
+        // Auto-detect current class based on room and current time
+        function detectCurrentClass(roomNumber) {
+            const now = new Date();
+            const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' });
+            const currentTime = now.getHours() * 60 + now.getMinutes(); // minutes since midnight
+
+            // Find matching class in schedule
+            const matchingClass = lecturerSchedule.find(entry => {
+                if (entry.room !== roomNumber) return false;
+                if (entry.day !== currentDay) return false;
+
+                // Parse start and end times (format: "HH:mm")
+                const [startHour, startMin] = entry.startTime.split(':').map(Number);
+                const [endHour, endMin] = entry.endTime.split(':').map(Number);
+                const startMinutes = startHour * 60 + startMin;
+                const endMinutes = endHour * 60 + endMin;
+
+                // Check if current time is within class time (with 15 min buffer before class)
+                return currentTime >= (startMinutes - 15) && currentTime <= endMinutes;
+            });
+
+            return matchingClass;
+        }
+
+        // Room selection handler - auto-detect and auto-start
+        async function handleRoomSelection() {
+            const selectedRoom = document.getElementById('roomSelect').value;
+
+            if (!selectedRoom) {
+                stopSession();
+                document.getElementById('sessionStatus').innerHTML = `
+                    <div class="bg-gray-400 rounded-full w-3 h-3 mr-2"></div>
+                    <span class="text-sm font-semibold text-gray-700">No Room Selected</span>
+                `;
+                document.getElementById('classDisplay').value = '-';
+                document.getElementById('dateDisplay').value = '-';
+                document.getElementById('timeDisplay').value = '-';
+                return;
+            }
+
+            // Fetch current session from facial recognition API
+            try {
+                const response = await fetch(`http://127.0.0.1:5011/api/facial-recognition/sessions/current`);
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    if (data.ok && data.session && data.session.room === selectedRoom) {
+                        // Found matching class
+                        currentClass = {
+                            moduleCode: data.session.module_code,
+                            moduleName: data.session.module_name,
+                            startTime: data.session.time || data.session.start_time,
+                            endTime: data.session.end_time,
+                            moduleId: data.session.module_id,
+                            enrolledCount: data.session.enrolled_count,
+                            date: data.session.date
+                        };
+
+                        // Display class info
+                        document.getElementById('classDisplay').value = `${currentClass.moduleCode} - ${currentClass.moduleName}`;
+
+                        // Format the date from session
+                        const classDate = new Date(currentClass.date);
+                        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                        document.getElementById('dateDisplay').value = classDate.toLocaleDateString('en-US', dateOptions);
+
+                        document.getElementById('timeDisplay').value = `${currentClass.startTime} - ${currentClass.endTime}`;
+
+                        // Update status based on is_live
+                        const isLive = data.session.is_live;
+                        document.getElementById('sessionStatus').innerHTML = isLive ? `
+                            <div class="animate-pulse bg-green-500 rounded-full w-3 h-3 mr-2"></div>
+                            <span class="text-sm font-semibold text-green-700">Live</span>
+                        ` : `
+                            <div class="bg-blue-500 rounded-full w-3 h-3 mr-2"></div>
+                            <span class="text-sm font-semibold text-blue-700">Upcoming</span>
+                        `;
+
+                        // Load enrolled students and auto-start
+                        await loadEnrolledStudents(currentClass.moduleCode);
+                        startSession();
+                    } else {
+                        // No class found for this room
+                        document.getElementById('classDisplay').value = 'No class scheduled';
+                        document.getElementById('dateDisplay').value = '-';
+                        document.getElementById('timeDisplay').value = '-';
+                        document.getElementById('sessionStatus').innerHTML = `
+                            <div class="bg-yellow-500 rounded-full w-3 h-3 mr-2"></div>
+                            <span class="text-sm font-semibold text-yellow-700">No Active Class</span>
+                        `;
+                        stopSession();
+                    }
+                } else {
+                    console.error('Failed to fetch session');
+                    stopSession();
+                }
+            } catch (error) {
+                console.error('Error fetching session:', error);
+                stopSession();
+            }
+        }
+
+        document.getElementById('roomSelect').addEventListener('change', handleRoomSelection);
+
+        // Load enrolled students for detected class
+        async function loadEnrolledStudents(moduleCode) {
+            try {
+                // Use enrolled count from current class data
+                const enrolledCount = currentClass.enrolledCount || 0;
+
+                // Create array with enrolled count for statistics
+                enrolledStudents = Array(enrolledCount).fill({ enrolled: true });
+
+                console.log(`Total enrolled students: ${enrolledStudents.length}`);
+
+                // Update statistics to show total
+                updateStatistics();
+            } catch (error) {
+                console.error('Error loading enrolled students:', error);
+                enrolledStudents = [];
+            }
+        }
+
+        function startSession() {
+            if (sessionActive) return; // Already running
+
+            sessionActive = true;
+            detectedStudents = [];
+
+            // Clear table
+            const emptyRow = document.getElementById('emptyRow');
+            if (emptyRow) emptyRow.remove();
+
+            // Start polling real-time attendance
+            pollRealTimeAttendance();
+        }
+
+        function stopSession() {
+            sessionActive = false;
+            if (sessionInterval) {
+                clearInterval(sessionInterval);
+                sessionInterval = null;
+            }
+            detectedStudents = [];
+
+            // Reset table
+            const tbody = document.getElementById('studentTableBody');
+            tbody.innerHTML = `
+                <tr id="emptyRow">
+                    <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <p class="text-lg font-semibold">No active session</p>
+                        <p class="text-sm">Select a room to start automatic detection</p>
+                    </td>
+                </tr>
+            `;
+            updateStatistics();
+        }
+
+        // Real-time attendance polling from facial recognition system
+        async function pollRealTimeAttendance() {
+            console.log('Starting real-time attendance polling');
+
+            // Initial load
+            await fetchTodayAttendance();
+
+            // Poll every 3 seconds
+            sessionInterval = setInterval(async () => {
+                if (!sessionActive) {
+                    clearInterval(sessionInterval);
+                    return;
+                }
+                await fetchTodayAttendance();
+            }, 3000);
+        }
+
+        async function fetchTodayAttendance() {
+            if (!currentClass || !currentClass.moduleId) {
+                console.error('No class ID available');
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://127.0.0.1:5011/api/facial-recognition/attendance/today?module_id=${currentClass.moduleId}`);
+
+                if (!response.ok) {
+                    console.error('Failed to fetch attendance:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (data.ok && data.students) {
+                    // Update detected students list
+                    data.students.forEach(student => {
+                        // Check if student is already in the list
+                        const existing = detectedStudents.find(s => s.studentId === student.student_id);
+
+                        if (!existing) {
+                            const detectedStudent = {
+                                studentId: student.student_id,
+                                name: student.name,
+                                timestamp: new Date(student.check_in_time).toLocaleTimeString(),
+                                status: 'present',
+                                confidence: student.confidence.toFixed(2)
+                            };
+
+                            detectedStudents.push(detectedStudent);
+                            console.log(`New student detected: ${student.name} (${student.confidence.toFixed(2)}% confidence)`);
+
+                            // Add to table
+                            updateStudentList(detectedStudent);
+                        }
+                    });
+
+                    updateStatistics();
+                }
+            } catch (error) {
+                console.error('Error fetching real-time attendance:', error);
+            }
+        }
+
+        // Update student list table
+        function updateStudentList(student) {
+            const tbody = document.getElementById('studentTableBody');
+
+            // Add row
+            const row = document.createElement('tr');
+            row.moduleName = 'bg-white hover:bg-gray-50 transition animate-fade-in';
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${student.studentId}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${student.name}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${student.timestamp}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        ${student.status}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${student.confidence}%</td>
+            `;
+            tbody.appendChild(row);
+
+            // Update statistics
+            updateStatistics();
+        }
+
+        function updateStatistics() {
+            const total = enrolledStudents.length;
+            const detected = detectedStudents.length;
+            const notDetected = total - detected;
+            const percentage = total > 0 ? Math.round((detected / total) * 100) : 0;
+
+            document.getElementById('totalStudents').textContent = total;
+            document.getElementById('detectedCount').textContent = detected;
+            document.getElementById('notDetectedCount').textContent = notDetected;
+            document.getElementById('attendancePercent').textContent = percentage + '%';
+        }
+
+        // Refresh button
+        document.getElementById('refreshBtn').addEventListener('click', function() {
+            if (sessionActive) {
+                location.reload();
+            }
+        });
+
+        // Initialize
+        loadScheduleAndRooms();
+        updateStatistics();
+        
+        // Start clock
+        updateCurrentTime();
+        clockInterval = setInterval(updateCurrentTime, 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Class List - Student Service Administrator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../../common/config.js"></script>
+    <script src="../../common/auth.js"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Upload Class Lists (US35)</h1>
+            <div class="flex items-center space-x-4">
+                <a href="./dashboard.html" class="bg-gray-700 hover:bg-gray-800 px-4 py-2 rounded-lg transition">Back to Dashboard</a>
+                <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Panel: Instructions -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow-lg p-6 sticky top-4">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Upload Instructions</h2>
+
+                    <div class="space-y-4 text-sm text-gray-700">
+                        <div>
+                            <h3 class="font-bold text-gray-800 mb-2">📋 File Format</h3>
+                            <p>CSV or Excel file (.csv, .xlsx)</p>
+                        </div>
+
+                        <div>
+                            <h3 class="font-bold text-gray-800 mb-2">📝 Required Columns</h3>
+                            <ul class="list-disc list-inside space-y-1 text-xs">
+                                <li>StudentID (required)</li>
+                                <li>FirstName (required)</li>
+                                <li>LastName (required)</li>
+                                <li>Email (required)</li>
+                                <li>Phone (optional)</li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h3 class="font-bold text-gray-800 mb-2">✓ Max File Size</h3>
+                            <p>Class list: 10 MB</p>
+                        </div>
+
+                        <div class="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
+                            <p class="text-xs"><strong>Tip:</strong> Download the template below to ensure correct format.</p>
+                        </div>
+
+                        <button id="downloadTemplateBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition mt-4">
+                            📥 Download Template
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Upload Form -->
+            <div class="lg:col-span-2">
+                <!-- Class Selection -->
+                <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Select Class & Upload</h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Program *</label>
+                            <select id="programSelect" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="">-- Select Program --</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Academic Year *</label>
+                            <select id="academicYearSelect" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="">-- Select Year --</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Intake *</label>
+                            <select id="intakeSelect" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="">-- Select Intake --</option>
+                                <option value="April">April</option>
+                                <option value="July">July</option>
+                            </select>
+                        </div>
+
+                        <div id="fileUploadArea" class="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center cursor-pointer hover:bg-blue-50 transition">
+                            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" class="hidden">
+                            <div class="space-y-2">
+                                <div class="text-4xl">📁</div>
+                                <p class="font-bold text-gray-700">Click to upload or drag & drop</p>
+                                <p class="text-xs text-gray-500">CSV or Excel file (Max 10 MB)</p>
+                                <p id="selectedFileName" class="text-sm text-blue-600 mt-2"></p>
+                            </div>
+                        </div>
+
+                        <div id="uploadMessage" class="hidden p-3 rounded"></div>
+
+                        <button id="uploadBtn" disabled class="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded-lg transition">
+                            📤 Upload Class List
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Upload Progress -->
+                <div id="uploadProgressContainer" class="hidden bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Upload Progress</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-sm font-medium text-gray-700">Processing</label>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="progressBar" class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <p id="progressText" class="text-sm text-gray-600">Initializing...</p>
+                    </div>
+                </div>
+
+                <!-- Upload Summary -->
+                <div id="uploadSummary" class="hidden bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Upload Summary</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-gray-700">Total Students Uploaded:</span>
+                            <span id="totalStudents" class="font-bold">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-700">Successful Records:</span>
+                            <span id="successCount" class="font-bold text-green-600">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-700">Failed Records:</span>
+                            <span id="failureCount" class="font-bold text-red-600">0</span>
+                        </div>
+                    </div>
+
+                    <div id="failureList" class="mt-4 hidden bg-red-50 p-3 rounded border-l-4 border-red-400">
+                        <p class="font-bold text-red-800 mb-2">Failed Records:</p>
+                        <ul id="failureItems" class="text-sm text-red-700 list-disc list-inside"></ul>
+                    </div>
+
+                    <div class="mt-6 flex space-x-4">
+                        <button id="viewUploadedBtn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">
+                            👁️ View Uploaded List
+                        </button>
+                        <button id="newUploadBtn" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition">
+                            ➕ Upload Another Class
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        requireAuth('student-service-admin');
+
+        let selectedFile = null;
+
+        // Initialize dropdowns on page load
+        async function initializeDropdowns() {
+            await loadPrograms();
+            generateAcademicYears();
+        }
+
+        // Load programs from students table
+        async function loadPrograms() {
+            try {
+                const apiBase = window.API_ENDPOINTS?.['student-service-admin'] || 'http://localhost:5008';
+                const response = await fetch(apiBase + '/api/ssa/programs', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + sessionStorage.getItem('auth_user')
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.ok && data.programs) {
+                    const programSelect = document.getElementById('programSelect');
+
+                    data.programs.forEach(program => {
+                        const option = document.createElement('option');
+                        option.value = program;
+                        option.textContent = program;
+                        programSelect.appendChild(option);
+                    });
+                }
+            } catch (e) {
+                console.error('Error loading programs:', e);
+            }
+        }
+
+        // Generate academic years dynamically (e.g., 2020-2021 to 2030-2031)
+        function generateAcademicYears() {
+            const academicYearSelect = document.getElementById('academicYearSelect');
+            const currentYear = new Date().getFullYear();
+            const startYear = currentYear - 5; // Start from 5 years ago
+            const endYear = currentYear + 5;   // Go up to 5 years in the future
+
+            for (let year = endYear; year >= startYear; year--) {
+                const option = document.createElement('option');
+                const academicYear = `${year}/${year + 1}`;
+                option.value = academicYear;
+                option.textContent = academicYear;
+                academicYearSelect.appendChild(option);
+            }
+        }
+
+        // Call initialization when page loads
+        document.addEventListener('DOMContentLoaded', initializeDropdowns);
+
+        // File upload area click
+        document.getElementById('fileUploadArea').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
+        // Drag & drop
+        document.getElementById('fileUploadArea').addEventListener('dragover', (e) => {
+            e.preventDefault();
+            document.getElementById('fileUploadArea').classList.add('bg-blue-50');
+        });
+
+        document.getElementById('fileUploadArea').addEventListener('dragleave', () => {
+            document.getElementById('fileUploadArea').classList.remove('bg-blue-50');
+        });
+
+        document.getElementById('fileUploadArea').addEventListener('drop', (e) => {
+            e.preventDefault();
+            document.getElementById('fileUploadArea').classList.remove('bg-blue-50');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        // File input change
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            if (file.size > 10 * 1024 * 1024) {
+                showMessage('File size exceeds 10 MB limit', 'error', 'uploadMessage');
+                return;
+            }
+
+            selectedFile = file;
+            document.getElementById('selectedFileName').textContent = `✓ Selected: ${file.name}`;
+            document.getElementById('uploadBtn').disabled = false;
+            showMessage('File ready for upload', 'info', 'uploadMessage');
+        }
+
+        // Download template
+        document.getElementById('downloadTemplateBtn').addEventListener('click', () => {
+            const csv = 'StudentID,FirstName,LastName,Email,Phone\nSTU0001,John,Doe,john.doe@example.com,12345678\nSTU0002,Jane,Smith,jane.smith@example.com,87654321\nSTU0003,Bob,Johnson,bob.johnson@example.com,11223344';
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'class-list-template.csv';
+            a.click();
+        });
+
+        // Upload class list
+        document.getElementById('uploadBtn').addEventListener('click', async () => {
+            const programSelect = document.getElementById('programSelect').value;
+            const academicYear = document.getElementById('academicYearSelect').value;
+            const intake = document.getElementById('intakeSelect').value;
+
+            if (!programSelect || !academicYear || !intake || !selectedFile) {
+                showMessage('Please fill in all fields and select a file', 'error', 'uploadMessage');
+                return;
+            }
+
+            document.getElementById('uploadProgressContainer').classList.remove('hidden');
+
+            // Simulate upload
+            for (let i = 0; i <= 100; i += 10) {
+                document.getElementById('progressBar').style.width = i + '%';
+                document.getElementById('progressText').textContent = `Processing... ${i}%`;
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                formData.append('program', programSelect);
+                formData.append('academicYear', academicYear);
+                formData.append('intake', intake);
+
+                const apiBase = window.API_ENDPOINTS?.['student-service-admin'] || 'http://localhost:5008';
+                const response = await fetch(apiBase + '/api/upload/students', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                console.log('Backend response:', data); // Debug log
+                console.log('Processed Student IDs:', data.processedStudentIDs); // Show IDs
+
+                if (!data.ok) {
+                    document.getElementById('uploadProgressContainer').classList.add('hidden');
+                    showMessage('Upload failed: ' + data.error, 'error', 'uploadMessage');
+                    return;
+                }
+
+                displayUploadSummary(data);
+            } catch (e) {
+                console.error('Error uploading class list:', e);
+                document.getElementById('uploadProgressContainer').classList.add('hidden');
+                showMessage('Failed to upload class list: ' + e.message, 'error', 'uploadMessage');
+            }
+        });
+
+        function displayUploadSummary(data) {
+            document.getElementById('uploadProgressContainer').classList.add('hidden');
+            document.getElementById('uploadSummary').classList.remove('hidden');
+
+            document.getElementById('totalStudents').textContent = data.total || 0;
+            document.getElementById('successCount').textContent = data.successful || 0;
+            document.getElementById('failureCount').textContent = data.failed || 0;
+
+            if (data.failed && data.failed > 0 && data.errors) {
+                document.getElementById('failureList').classList.remove('hidden');
+                const failureItems = document.getElementById('failureItems');
+                failureItems.innerHTML = '';
+                data.errors.forEach(error => {
+                    const li = document.createElement('li');
+                    li.textContent = error;
+                    failureItems.appendChild(li);
+                });
+            }
+
+            showMessage(data.message || 'Students uploaded successfully!', 'success', 'uploadMessage');
+        }
+
+        // Reset for new upload
+        document.getElementById('newUploadBtn').addEventListener('click', () => {
+            document.getElementById('programSelect').value = '';
+            document.getElementById('academicYearSelect').value = '';
+            document.getElementById('intakeSelect').value = '';
+            selectedFile = null;
+            document.getElementById('selectedFileName').textContent = '';
+            document.getElementById('uploadSummary').classList.add('hidden');
+            document.getElementById('uploadBtn').disabled = true;
+        });
+
+        function showMessage(text, type, elementId) {
+            const messageDiv = document.getElementById(elementId);
+            messageDiv.textContent = text;
+            messageDiv.classList.remove('hidden', 'bg-green-100', 'border-green-400', 'text-green-700', 'bg-red-100', 'border-red-400', 'text-red-700', 'bg-blue-100', 'border-blue-400', 'text-blue-700');
+
+            if (type === 'success') {
+                messageDiv.classList.add('bg-green-100', 'border', 'border-green-400', 'text-green-700');
+            } else if (type === 'error') {
+                messageDiv.classList.add('bg-red-100', 'border', 'border-red-400', 'text-red-700');
+            } else {
+                messageDiv.classList.add('bg-blue-100', 'border', 'border-blue-400', 'text-blue-700');
+            }
+        }
+
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            logout();
+        });
+    </script>
+</body>
+</html>

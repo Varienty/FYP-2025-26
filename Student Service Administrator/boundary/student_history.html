@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student History Report - Student Service Administrator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../../common/config.js"></script>
+    <script src="../../common/auth.js"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Student Attendance History Report (US36)</h1>
+            <div class="flex items-center space-x-4">
+                <a href="./dashboard.html" class="bg-gray-700 hover:bg-gray-800 px-4 py-2 rounded-lg transition">Back to Dashboard</a>
+                <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Search Section -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Search Student Attendance History</h2>
+
+            <div class="flex gap-4 mb-6">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Student ID or Name *</label>
+                    <input
+                        type="text"
+                        id="studentSearch"
+                        placeholder="e.g., STU2025001 or Kenneth Ang"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                </div>
+                <div class="flex items-end">
+                    <button id="searchBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition">
+                        🔍 Search
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message -->
+        <div id="message" class="hidden p-4 rounded-lg mb-6"></div>
+
+        <!-- Student Profile Card -->
+        <div id="studentCard" class="hidden bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="text-sm font-medium text-gray-600">Student ID</label>
+                    <p id="studentId" class="text-lg font-bold text-gray-800">--</p>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-600">Name</label>
+                    <p id="studentName" class="text-lg font-bold text-gray-800">--</p>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-600">Email</label>
+                    <p id="studentEmail" class="text-lg text-gray-800">--</p>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-600">Department</label>
+                    <p id="studentDept" class="text-lg text-gray-800">--</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Course Records -->
+        <div id="courseTableContainer" class="hidden bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Course-wise Attendance Records</h3>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-200">
+                        <tr>
+                            <th class="px-4 py-2 text-left">Course Code</th>
+                            <th class="px-4 py-2 text-left">Course Name</th>
+                            <th class="px-4 py-2 text-center">Classes Attended</th>
+                            <th class="px-4 py-2 text-center">Total Classes</th>
+                            <th class="px-4 py-2 text-center">Attendance %</th>
+                            <th class="px-4 py-2 text-center">Late Arrivals</th>
+                            <th class="px-4 py-2 text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="courseTableBody" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+
+            <div class="mt-6">
+                <button id="exportCsvBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition">
+                    📥 Export as CSV
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Check authentication
+        requireAuth('student-service-admin');
+
+        let currentStudent = null;
+        let currentHistory = null;
+        let courseAttendanceChart, attendanceTrendChart;
+
+        // Search handler
+        document.getElementById('searchBtn').addEventListener('click', async () => {
+            const searchTerm = document.getElementById('studentSearch').value;
+
+            if (!searchTerm) {
+                showMessage('Please enter student ID or name', 'error');
+                return;
+            }
+
+            try {
+                const apiBase = window.API_ENDPOINTS?.['student-service-admin'] || 'http://localhost:5008';
+                const response = await fetch(apiBase + `/api/student/history?search=${searchTerm}`, {
+                    headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('auth_user') }
+                });
+
+                const data = await response.json();
+                if (data.student) {
+                    displayStudentHistory(data.student, data.history);
+                } else {
+                    showMessage('Student not found', 'error');
+                }
+            } catch (e) {
+                console.error('Error loading student history:', e);
+                showMessage('Failed to load student history: ' + e.message, 'error');
+            }
+        });
+
+        function getDemoStudent() {
+            return {
+                id: 'STU0001',
+                name: 'Alice Johnson',
+                email: 'alice@university.edu',
+                department: 'Computer Science'
+            };
+        }
+
+        function getDemoHistory() {
+            return {
+                courseCount: 6,
+                totalAttended: 142,
+                totalMissed: 18,
+                totalLate: 8,
+                overallAttendance: 88.6,
+                courseStats: [
+                    { code: 'CS101', name: 'Programming', attended: 24, total: 25, late: 1 },
+                    { code: 'CS102', name: 'Data Structures', attended: 23, total: 25, late: 2 },
+                    { code: 'CS103', name: 'Algorithms', attended: 23, total: 24, late: 0 },
+                    { code: 'MATH101', name: 'Calculus', attended: 22, total: 25, late: 3 },
+                    { code: 'MATH102', name: 'Linear Algebra', attended: 25, total: 25, late: 0 },
+                    { code: 'ENG101', name: 'English', attended: 25, total: 26, late: 2 }
+                ],
+                dailyRecords: [
+                    { date: '2024-12-02', course: 'CS101', status: 'present', session: 'Morning', remarks: '' },
+                    { date: '2024-12-02', course: 'MATH101', status: 'present', session: 'Afternoon', remarks: '' },
+                    { date: '2024-12-01', course: 'CS102', status: 'late', session: 'Morning', remarks: 'Traffic delay' },
+                    { date: '2024-12-01', course: 'ENG101', status: 'present', session: 'Afternoon', remarks: '' }
+                ],
+                trend: [
+                    { month: 'Aug', rate: 85 },
+                    { month: 'Sep', rate: 87 },
+                    { month: 'Oct', rate: 89 },
+                    { month: 'Nov', rate: 88 }
+                ]
+            };
+        }
+
+        function displayStudentHistory(student, history) {
+            currentStudent = student;
+            currentHistory = history;
+
+            // Student profile
+            document.getElementById('studentId').textContent = student.id;
+            document.getElementById('studentName').textContent = student.name;
+            document.getElementById('studentEmail').textContent = student.email || 'N/A';
+            document.getElementById('studentDept').textContent = student.department || 'N/A';
+            document.getElementById('studentCard').classList.remove('hidden');
+
+            // Course records
+            displayCourseTable(history.courseStats);
+            document.getElementById('courseTableContainer').classList.remove('hidden');
+
+            showMessage(`Report loaded for ${student.name}`, 'success');
+        }
+
+        function displayCharts(history) {
+            // Course Attendance Chart
+            const ctx1 = document.getElementById('courseAttendanceChart').getContext('2d');
+            if (courseAttendanceChart) courseAttendanceChart.destroy();
+            courseAttendanceChart = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: history.courseStats.map(c => c.code),
+                    datasets: [{
+                        label: 'Attendance %',
+                        data: history.courseStats.map(c => ((c.attended / c.total) * 100).toFixed(1)),
+                        backgroundColor: '#3b82f6'
+                    }]
+                },
+                options: { responsive: true, scales: { y: { max: 100 } } }
+            });
+
+            // Attendance Trend Chart
+            const ctx2 = document.getElementById('attendanceTrendChart').getContext('2d');
+            if (attendanceTrendChart) attendanceTrendChart.destroy();
+            attendanceTrendChart = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: history.trend.map(t => t.month),
+                    datasets: [{
+                        label: 'Attendance %',
+                        data: history.trend.map(t => t.rate),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+        }
+
+        function displayCourseTable(courseStats) {
+            const tbody = document.getElementById('courseTableBody');
+            tbody.innerHTML = '';
+
+            courseStats.forEach(course => {
+                // Use pre-calculated attendance from backend (starts at 100%, drops when classes missed)
+                const attendance = course.attendance !== undefined ? course.attendance : 100.0;
+                const statusColor = attendance >= 75 ? 'text-green-600' : attendance >= 60 ? 'text-orange-600' : 'text-red-600';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-4 py-3 font-bold">${course.code}</td>
+                    <td class="px-4 py-3">${course.name}</td>
+                    <td class="px-4 py-3 text-center">${course.attended}</td>
+                    <td class="px-4 py-3 text-center">${course.total}</td>
+                    <td class="px-4 py-3 text-center font-bold ${statusColor}">${attendance}%</td>
+                    <td class="px-4 py-3 text-center">${course.late}</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="px-2 py-1 rounded text-xs font-bold ${attendance >= 75 ? 'bg-green-100 text-green-800' : attendance >= 60 ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800'}">
+                            ${attendance >= 75 ? 'Good' : attendance >= 60 ? 'Warning' : 'Critical'}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.classList.remove('hidden', 'bg-green-100', 'border-green-400', 'text-green-700', 'bg-red-100', 'border-red-400', 'text-red-700', 'bg-blue-100', 'border-blue-400', 'text-blue-700');
+
+            if (type === 'success') {
+                messageDiv.classList.add('bg-green-100', 'border', 'border-green-400', 'text-green-700');
+            } else if (type === 'error') {
+                messageDiv.classList.add('bg-red-100', 'border', 'border-red-400', 'text-red-700');
+            } else {
+                messageDiv.classList.add('bg-blue-100', 'border', 'border-blue-400', 'text-blue-700');
+            }
+        }
+
+        // Export CSV handler
+        document.getElementById('exportCsvBtn').addEventListener('click', () => {
+            if (!currentStudent || !currentHistory) {
+                showMessage('No student data to export', 'error');
+                return;
+            }
+
+            const rows = document.querySelectorAll('#courseTableBody tr');
+            let csv = 'CourseCode,CourseName,ClassesAttended,TotalClasses,AttendancePercentage,LateArrivals,Status\n';
+
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const rowData = [
+                    cells[0].textContent, // Course Code
+                    cells[1].textContent, // Course Name
+                    cells[2].textContent, // Classes Attended
+                    cells[3].textContent, // Total Classes
+                    cells[4].textContent, // Attendance %
+                    cells[5].textContent, // Late Arrivals
+                    cells[6].textContent.trim() // Status
+                ].map(cell => `"${cell}"`).join(',');
+                csv += rowData + '\n';
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `student-history-${currentStudent.id}-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            showMessage('CSV exported successfully', 'success');
+        });
+
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            logout();
+        });
+    </script>
+</body>
+</html>
