@@ -9,8 +9,11 @@ Usage:
 """
 
 import os
-from flask import Flask, jsonify, send_file, send_from_directory
+import json
+from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
+from common.db_utils import get_db_connection
+import bcrypt
 
 # Create Flask app with static and template folders
 app = Flask(__name__, 
@@ -49,18 +52,98 @@ def serve_static(filename):
     return send_from_directory('common', filename)
 
 # ============================================================================
-# LECTURER API ENDPOINTS
+# AUTHENTICATION ENDPOINTS
 # ============================================================================
 
-@app.route('/api/lecturer/auth/login', methods=['POST'])
+@app.route('/api/auth/login', methods=['POST'])
 def login():
-    """Placeholder for lecturer login"""
-    return jsonify({'error': 'API backend configured'}), 200
+    """Authenticate user - check all user types"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip()
+        password = data.get('password', '').strip()
+        
+        if not email or not password:
+            return jsonify({'error': 'Email and password required'}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Try Student Service Admin
+        cursor.execute("SELECT id, admin_id as user_id, 'ssa' as role, password, first_name, last_name FROM student_service_admins WHERE email = %s", (email,))
+        user = cursor.fetchone()
+        
+        if not user:
+            # Try System Admin
+            cursor.execute("SELECT id, admin_id as user_id, 'sysadmin' as role, password, first_name, last_name FROM system_admins WHERE email = %s", (email,))
+            user = cursor.fetchone()
+        
+        if not user:
+            # Try Lecturer
+            cursor.execute("SELECT id, lecturer_id as user_id, 'lecturer' as role, password, first_name, last_name FROM lecturers WHERE email = %s", (email,))
+            user = cursor.fetchone()
+        
+        if not user:
+            # Try Student
+            cursor.execute("SELECT id, student_id as user_id, 'student' as role, password, first_name, last_name FROM students WHERE email = %s", (email,))
+            user = cursor.fetchone()
+        
+        cursor.close()
+        conn.close()
+        
+        if not user:
+            return jsonify({'error': 'Invalid email or password'}), 401
+        
+        # Verify password (bcrypt hash comparison)
+        # Note: The sample data uses bcrypt hashes. For testing, you can use plain 'password' 
+        # or properly hash new passwords with bcrypt
+        stored_hash = user.get('password', '')
+        
+        # Check if it's a bcrypt hash (starts with $2a$, $2b$, or $2y$)
+        if stored_hash.startswith('$2'):
+            # Verify bcrypt hash
+            password_match = bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
+        else:
+            # Fallback: plain text comparison (for testing)
+            password_match = password == stored_hash
+        
+        if not password_match:
+            return jsonify({'error': 'Invalid email or password'}), 401
+        
+        # Return user info
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': user['id'],
+                'user_id': user['user_id'],
+                'role': user['role'],
+                'email': email,
+                'first_name': user['first_name'],
+                'last_name': user['last_name']
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+@app.route('/api/auth/logout', methods=['POST'])
+def logout():
+    """Logout endpoint"""
+    return jsonify({'success': True, 'message': 'Logged out'}), 200
+
+# ============================================================================
+# LECTURER API ENDPOINTS
+# ============================================================================
 
 @app.route('/api/lecturer/dashboard', methods=['GET'])
 def lecturer_dashboard():
     """Placeholder for lecturer dashboard"""
     return jsonify({'message': 'Lecturer dashboard'}), 200
+
+@app.route('/api/lecturer/attendance', methods=['GET'])
+def lecturer_attendance():
+    """Get attendance for lecturer's classes"""
+    return jsonify({'message': 'Lecturer attendance'}), 200
 
 # ============================================================================
 # STUDENT SERVICE ADMIN ENDPOINTS
@@ -110,4 +193,5 @@ if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_ENV', 'production') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug)
+
 
