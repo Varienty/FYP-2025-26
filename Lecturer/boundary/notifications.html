@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications | Lecturer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../../common/config.js"></script>
+    <script src="../../common/auth.js"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="container mx-auto px-6">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-6">
+                    <a href="dashboard.html" class="text-lg font-semibold hover:text-blue-200 transition">Dashboard</a>
+                    <a href="real_time_list.html" class="text-lg font-semibold hover:text-blue-200 transition">Real-Time</a>
+                    <a href="attendance_records.html" class="text-lg font-semibold hover:text-blue-200 transition">Attendance Records</a>
+                    <a href="class_schedule.html" class="text-lg font-semibold hover:text-blue-200 transition">Class Schedule</a>
+                    <a href="attendance_report.html" class="text-lg font-semibold hover:text-blue-200 transition">Attendance Report</a>
+                    <a href="notifications.html" class="text-lg font-semibold border-b-2 border-white">Notifications</a>
+                </div>
+                <button data-action="logout" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="container mx-auto px-6 py-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Notifications</h1>
+                <p class="text-sm text-gray-600">View all notification history</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8">
+        <!-- Notification Controls -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <select id="filterType" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="all">All Notifications</option>
+                        <option value="class_reminder">Class Reminders</option>
+                        <option value="session_active">Active Sessions</option>
+                        <option value="attendance_alert">Attendance Alerts</option>
+                        <option value="schedule_change">Schedule Changes</option>
+                        <option value="camera_offline">System Issues</option>
+                    </select>
+                    <button id="markAllRead" class="text-blue-600 hover:text-blue-700 font-semibold text-sm">Mark All as Read</button>
+                </div>
+                <button id="clearAll" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition text-sm font-semibold">
+                    Clear All
+                </button>
+            </div>
+        </div>
+
+        <!-- Notifications List -->
+        <div id="notificationsList" class="space-y-4"></div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="bg-white rounded-lg shadow p-12 text-center hidden">
+            <svg class="w-24 h-24 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">No Notifications</h3>
+            <p class="text-gray-600">You're all caught up! No notifications to display.</p>
+        </div>
+    </main>
+
+    <script>
+        // US17 - Notifications History (Extension of Sequence Diagram #17)
+        requireAuth('lecturer');
+
+        // Show message function for notifications
+        function showMessage(message, type = 'success') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `fixed top-4 right-4 px-6 py-4 rounded-lg shadow-lg z-50 ${
+                type === 'error' ? 'bg-red-500' : 'bg-green-500'
+            } text-white font-semibold`;
+            messageDiv.textContent = message;
+            document.body.appendChild(messageDiv);
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 3000);
+        }
+
+        const API_BASE = window.API_ENDPOINTS?.['lecturer-notifications'] || 'http://localhost:5007';
+        let notifications = [];
+
+        // Load notifications from database
+        async function loadNotifications() {
+            try {
+                const authUser = sessionStorage.getItem('auth_user');
+                if (!authUser) {
+                    console.error('No user found in sessionStorage');
+                    showMessage('Please log in first', 'error');
+                    return [];
+                }
+
+                const user = JSON.parse(authUser);
+                const lecturerId = user.lecturerId || user.lecturer_id;
+                
+                if (!lecturerId) {
+                    console.error('No lecturer ID found');
+                    showMessage('Lecturer ID not found', 'error');
+                    return [];
+                }
+                
+                console.log('Loading notifications from:', `${API_BASE}/api/lecturer/notifications?lecturerId=${lecturerId}`);
+                const res = await fetch(`${API_BASE}/api/lecturer/notifications?lecturerId=${lecturerId}`);
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                
+                const data = await res.json();
+                
+                if (data.success && data.notifications) {
+                    notifications = data.notifications;
+                    return notifications;
+                } else {
+                    console.error('Failed to load notifications:', data);
+                    return [];
+                }
+            } catch (e) {
+                console.error('Error loading notifications:', e);
+                showMessage('Failed to load notifications: ' + e.message, 'error');
+                return [];
+            }
+        }
+
+        // Display notifications
+        async function displayNotifications(filterType = 'all') {
+            await loadNotifications();
+            const container = document.getElementById('notificationsList');
+            const emptyState = document.getElementById('emptyState');
+
+            // Filter notifications
+            let filtered = notifications;
+            if (filterType !== 'all') {
+                filtered = notifications.filter(n => n.type === filterType);
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            container.innerHTML = '';
+
+            filtered.forEach((notif, index) => {
+                const notifCard = document.createElement('div');
+                notifCard.className = `bg-white rounded-lg shadow p-5 ${notif.read ? 'opacity-75' : 'border-l-4 border-blue-500'}`;
+                
+                const typeConfig = {
+                    class_reminder: { color: 'blue', icon: '⏰', label: 'Class Reminder' },
+                    session_active: { color: 'orange', icon: '⚡', label: 'Active Session' },
+                    attendance_alert: { color: 'red', icon: '📊', label: 'Attendance Alert' },
+                    schedule_change: { color: 'purple', icon: '📅', label: 'Schedule Change' },
+                    camera_offline: { color: 'red', icon: '📹', label: 'System Issue' },
+                    start: { color: 'green', icon: '▶', label: 'Session Started' },
+                    end: { color: 'blue', icon: '⏹', label: 'Session Ended' },
+                    error: { color: 'red', icon: '⚠', label: 'Error' }
+                };
+
+                const config = typeConfig[notif.type] || typeConfig.class_reminder;
+
+                notifCard.innerHTML = `
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start gap-4 flex-1">
+                            <div class="bg-${config.color}-100 text-${config.color}-600 w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold">
+                                ${config.icon}
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="font-semibold text-gray-800">${config.label}</span>
+                                    ${notif.read ? '' : '<span class="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">New</span>'}
+                                </div>
+                                <p class="text-gray-700 mb-2">${notif.message || notif.title}</p>
+                                <p class="text-sm text-gray-500">${new Date(notif.timestamp || notif.created_at).toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <button onclick="deleteNotification(${notif.id})" class="text-gray-400 hover:text-red-600 transition ml-4">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                `;
+
+                container.appendChild(notifCard);
+            });
+        }
+
+        // Mark all as read
+        document.getElementById('markAllRead').addEventListener('click', async () => {
+            try {
+                const authUser = sessionStorage.getItem('auth_user');
+                const user = JSON.parse(authUser);
+                const lecturerId = user.lecturerId || user.lecturer_id;
+                
+                const res = await fetch(`${API_BASE}/api/lecturer/notification/mark-read`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lecturerId: lecturerId })
+                });
+                
+                if (res.ok) {
+                    showMessage('All notifications marked as read', 'success');
+                    await displayNotifications(document.getElementById('filterType').value);
+                } else {
+                    throw new Error('Failed to mark as read');
+                }
+            } catch (e) {
+                console.error('Error marking as read:', e);
+                showMessage('Failed to mark notifications as read', 'error');
+            }
+        });
+
+        // Delete individual notification
+        window.deleteNotification = async function(notificationId) {
+            if (!confirm('Delete this notification?')) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/lecturer/notifications/${notificationId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (res.ok) {
+                    showMessage('Notification deleted', 'success');
+                    await displayNotifications(document.getElementById('filterType').value);
+                } else {
+                    throw new Error('Failed to delete notification');
+                }
+            } catch (e) {
+                console.error('Error deleting notification:', e);
+                showMessage('Failed to delete notification', 'error');
+            }
+        };
+
+        // Clear all notifications
+        document.getElementById('clearAll').addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to clear all notifications? This cannot be undone.')) return;
+
+            try {
+                const authUser = sessionStorage.getItem('auth_user');
+                const user = JSON.parse(authUser);
+                const lecturerId = user.lecturerId || user.lecturer_id;
+
+                const res = await fetch(`${API_BASE}/api/lecturer/notifications/clear-all`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lecturerId: lecturerId })
+                });
+
+                if (res.ok) {
+                    showMessage('All notifications cleared', 'success');
+                    notifications = [];
+                    await displayNotifications(document.getElementById('filterType').value);
+                } else {
+                    throw new Error('Failed to clear notifications');
+                }
+            } catch (e) {
+                console.error('Error clearing notifications:', e);
+                showMessage('Failed to clear all notifications', 'error');
+            }
+        });
+
+        // Generate class start notifications
+        async function generateClassReminders() {
+            try {
+                const apiBase = window.API_ENDPOINTS?.['lecturer-notifications'] || 'http://localhost:5007';
+                const response = await fetch(`${apiBase}/api/lecturer/notifications/generate-class-reminders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`[Notifications] Generated ${data.count} class reminder(s)`);
+
+                    // Reload notifications if any were created
+                    if (data.count > 0) {
+                        await loadNotifications();
+                        displayNotifications(document.getElementById('filterType').value);
+                    }
+                }
+            } catch (error) {
+                console.error('[Notifications] Error generating class reminders:', error);
+            }
+        }
+
+        // Filter change
+        document.getElementById('filterType').addEventListener('change', (e) => {
+            displayNotifications(e.target.value);
+        });
+
+        // Load notifications on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Generate class reminders first
+            await generateClassReminders();
+
+            // Then display notifications
+            displayNotifications();
+
+            // Set up periodic check every 5 minutes
+            setInterval(generateClassReminders, 5 * 60 * 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Records | Lecturer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../../common/config.js"></script>
+    <script src="../../common/auth.js"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="container mx-auto px-6">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-6">
+                    <a href="dashboard.html" class="text-lg font-semibold hover:text-blue-200 transition">Dashboard</a>
+                    <a href="real_time_list.html" class="text-lg font-semibold hover:text-blue-200 transition">Real-Time</a>
+                    <a href="attendance_records.html" class="text-lg font-semibold border-b-2 border-white">Attendance Records</a>
+                    <a href="class_schedule.html" class="text-lg font-semibold hover:text-blue-200 transition">Class Schedule</a>
+                    <a href="attendance_report.html" class="text-lg font-semibold hover:text-blue-200 transition">Attendance Report</a>
+                    <a href="notifications.html" class="text-lg font-semibold hover:text-blue-200 transition">Notifications</a>
+                </div>
+                <button data-action="logout" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="container mx-auto px-6 py-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Attendance Records</h1>
+                <p class="text-sm text-gray-600">Filter and view attendance history</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8">
+        <!-- Filter Panel (Sequence Diagram #18) -->
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Filter Records</h2>
+            
+            <form id="filterForm" class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Class</label>
+                    <select id="filterClass" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Classes</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Date</label>
+                    <input type="date" id="filterDate" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Student ID (Optional)</label>
+                    <input type="text" id="filterStudent" placeholder="e.g., STU001" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+                    <select id="filterStatus" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Status</option>
+                        <option value="present">Present</option>
+                        <option value="absent">Absent</option>
+                        <option value="late">Late</option>
+                    </select>
+                </div>
+
+                <div class="md:col-span-4 flex items-end gap-3">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-2 rounded-lg transition">
+                        Apply Filter
+                    </button>
+                    <button type="button" id="clearFilter" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold px-8 py-2 rounded-lg transition">
+                        Clear
+                    </button>
+                </div>
+            </form>
+
+            <div id="filterError" class="hidden mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg"></div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <p class="text-gray-500 text-sm mb-1">Total Records</p>
+                <p id="totalRecords" class="text-3xl font-bold text-gray-800">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <p class="text-gray-500 text-sm mb-1">Present</p>
+                <p id="presentCount" class="text-3xl font-bold text-green-600">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <p class="text-gray-500 text-sm mb-1">Absent</p>
+                <p id="absentCount" class="text-3xl font-bold text-red-600">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <p class="text-gray-500 text-sm mb-1">Late</p>
+                <p id="lateCount" class="text-3xl font-bold text-yellow-600">0</p>
+            </div>
+        </div>
+
+        <!-- Records Table -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-800">Records</h2>
+                <button id="exportCSV" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition text-sm font-semibold">
+                    <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                    </svg>
+                    Export CSV
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Class</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Student ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Student Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Time</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsTableBody" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // US18 - Filter Attendance Records (Sequence Diagram #18)
+        requireAuth('lecturer');
+
+        let currentRecords = [];
+        let currentFilter = null; // Track current filter state
+
+        // Show message function
+        function showMessage(message, type) {
+            const notification = document.createElement('div');
+            notification.moduleName = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
+                type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
+            }`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Load lecturer's classes for filter dropdown
+        async function loadClasses() {
+            const user = getCurrentUser();
+            console.log('[loadClasses] Current user:', user);
+            if (!user) {
+                console.error('[loadClasses] No user logged in');
+                return;
+            }
+
+            try {
+                const url = window.getApiUrl('getSchedule', 'lecturer-schedule') + `?lecturerId=${user.lecturer_id || 'LEC001'}`;
+                console.log('[loadClasses] Fetching from:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                console.log('[loadClasses] Response status:', response.status);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('[loadClasses] Data received:', data);
+                    const classSelect = document.getElementById('filterClass');
+                    
+                    if (data.modules && data.modules.length > 0) {
+                        // Get unique classes (backend returns 'modules' not 'classes')
+                        const uniqueClasses = {};
+                        data.modules.forEach(cls => {
+                            if (!uniqueClasses[cls.moduleCode]) {
+                                uniqueClasses[cls.moduleCode] = cls.moduleName;
+                            }
+                        });
+                        
+                        console.log('[loadClasses] Unique classes:', uniqueClasses);
+                        
+                        // Add to dropdown
+                        Object.keys(uniqueClasses).sort().forEach(code => {
+                            const option = document.createElement('option');
+                            option.value = code;
+                            option.textContent = `${code} - ${uniqueClasses[code]}`;
+                            classSelect.appendChild(option);
+                            console.log('[loadClasses] Added option:', code);
+                        });
+                    } else {
+                        console.warn('[loadClasses] No classes found in response');
+                    }
+                } else {
+                    console.error('[loadClasses] API request failed with status:', response.status);
+                }
+            } catch (error) {
+                console.error('[loadClasses] Error:', error);
+            }
+        }
+
+        // Load today's records initially (better UX - shows only relevant data)
+        async function loadAllRecords() {
+            console.log('[loadAllRecords] Fetching today\'s attendance records from backend...');
+            try {
+                const apiBase = window.API_ENDPOINTS?.['lecturer-attendance'] || 'http://localhost:5004';
+                const user = getCurrentUser();
+                const today = new Date().toISOString().split('T')[0];
+                const url = apiBase + '/api/lecturer/attendance/filter';
+                console.log('[loadAllRecords] Fetching from:', url);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        lecturerId: user.lecturer_id || 'LEC001',
+                        dateRange: {
+                            start: today,
+                            end: today
+                        }
+                    })
+                });
+
+                console.log('[loadAllRecords] Response status:', response.status);
+                if (!response.ok) throw new Error('Failed to load records');
+
+                const data = await response.json();
+                console.log('[loadAllRecords] Data received:', data);
+                currentRecords = data.records || [];
+                console.log('[loadAllRecords] Total records:', currentRecords.length);
+
+            } catch (error) {
+                console.error('[loadAllRecords] Error:', error);
+                showMessage('Failed to load attendance records: ' + error.message, 'error');
+                currentRecords = [];
+            }
+
+            displayRecords(currentRecords);
+        }
+
+        // Apply filter (Sequence Diagram #18)
+        document.getElementById('filterForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const user = getCurrentUser();
+            const filterParams = {
+                moduleCode: document.getElementById('filterClass').value,
+                studentId: document.getElementById('filterStudent').value.trim(), // Optional - can be empty
+                status: document.getElementById('filterStatus').value,
+                date: document.getElementById('filterDate').value,
+                lecturerId: user.lecturer_id || 'LEC001'
+            };
+            
+            // Store current filter
+            currentFilter = filterParams;
+
+            hideError();
+
+            try {
+                // Call attendanceController.filterRecords() (Sequence Diagram #18)
+                const apiBase = window.API_ENDPOINTS?.['lecturer-attendance'] || 'http://localhost:5004';
+                const response = await fetch(apiBase + '/api/lecturer/attendance/filter', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + sessionStorage.getItem('auth_user')
+                    },
+                    body: JSON.stringify(filterParams)
+                });
+
+                if (!response.ok) throw new Error('Filter failed');
+
+                const data = await response.json();
+                displayRecords(data.records || []);
+
+            } catch (error) {
+                console.error('Error filtering records:', error);
+                showMessage('Failed to filter records: ' + error.message, 'error');
+                displayRecords([]);
+            }
+        });
+
+        // Display records
+        function displayRecords(records) {
+            const tbody = document.getElementById('recordsTableBody');
+            tbody.innerHTML = '';
+
+            // Update summary
+            document.getElementById('totalRecords').textContent = records.length;
+            document.getElementById('presentCount').textContent = records.filter(r => r.status === 'present').length;
+            document.getElementById('absentCount').textContent = records.filter(r => r.status === 'absent').length;
+            document.getElementById('lateCount').textContent = records.filter(r => r.status === 'late').length;
+
+            records.forEach(record => {
+                const statusConfig = {
+                    present: { class: 'bg-green-100 text-green-800', label: 'Present' },
+                    absent: { class: 'bg-red-100 text-red-800', label: 'Absent' },
+                    late: { class: 'bg-yellow-100 text-yellow-800', label: 'Late' }
+                };
+
+                const config = statusConfig[record.status];
+
+                const row = document.createElement('tr');
+                row.moduleName = 'hover:bg-gray-50';
+                row.dataset.recordId = record.id || `${record.studentId}-${record.date}`;
+                row.innerHTML = `
+                    <td class="px-6 py-4 text-sm text-gray-900">${record.date}</td>
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${record.moduleCode}</td>
+                    <td class="px-6 py-4 text-sm text-gray-900">${record.studentId}</td>
+                    <td class="px-6 py-4 text-sm text-gray-900">${record.studentName}</td>
+                    <td class="px-6 py-4 text-sm">
+                        <select class="status-select border border-gray-300 rounded px-2 py-1 text-xs font-semibold" data-original="${record.status}">
+                            <option value="present" ${record.status === 'present' ? 'selected' : ''} class="text-green-800">Present</option>
+                            <option value="absent" ${record.status === 'absent' ? 'selected' : ''} class="text-red-800">Absent</option>
+                            <option value="late" ${record.status === 'late' ? 'selected' : ''} class="text-yellow-800">Late</option>
+                        </select>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${record.time}</td>
+                    <td class="px-6 py-4 text-sm">
+                        <button class="update-status-btn bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-semibold transition">
+                            Update
+                        </button>
+                    </td>
+                `;
+                
+                // Add event listener for update button
+                const updateBtn = row.querySelector('.update-status-btn');
+                const statusSelect = row.querySelector('.status-select');
+                
+                updateBtn.addEventListener('click', async () => {
+                    const newStatus = statusSelect.value;
+                    const originalStatus = statusSelect.dataset.original;
+                    
+                    if (newStatus === originalStatus) {
+                        alert('Status unchanged');
+                        return;
+                    }
+                    
+                    // Update status
+                    await updateAttendanceStatus(record, newStatus, row);
+                });
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // Update attendance status
+        async function updateAttendanceStatus(record, newStatus, rowElement) {
+            try {
+                const user = getCurrentUser();
+                const apiBase = window.API_ENDPOINTS?.['lecturer-attendance'] || 'http://localhost:5004';
+                const response = await fetch(apiBase + '/api/lecturer/attendance/update-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        studentId: record.studentId,
+                        moduleCode: record.moduleCode,
+                        date: record.date,
+                        newStatus: newStatus,
+                        lecturerId: user.lecturer_id || 'LEC001'
+                    })
+                });
+
+                if (response.ok) {
+                    // Update the record in place without reloading
+                    record.status = newStatus;
+                    const statusSelect = rowElement.querySelector('.status-select');
+                    statusSelect.dataset.original = newStatus;
+                    
+                    // Update the badge color
+                    const badge = statusSelect.closest('td');
+                    const statusBadge = document.createElement('span');
+                    statusBadge.moduleName = `px-3 py-1 rounded-full text-xs font-semibold ${
+                        newStatus === 'present' ? 'bg-green-100 text-green-800' :
+                        newStatus === 'late' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                    }`;
+                    statusBadge.textContent = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+                    
+                    // Show success notification
+                    showMessage(`Status updated to ${newStatus.toUpperCase()}`, 'success');
+                    
+                    // Reload with current filter to show updated data
+                    if (currentFilter) {
+                        // Re-apply the current filter
+                        document.getElementById('filterForm').dispatchEvent(new Event('submit'));
+                    } else {
+                        // Reload today's records
+                        loadAllRecords();
+                    }
+                } else {
+                    throw new Error('Failed to update status');
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+                showMessage('Failed to update status: ' + error.message, 'error');
+            }
+        }
+
+        // Clear filter
+        document.getElementById('clearFilter').addEventListener('click', () => {
+            document.getElementById('filterForm').reset();
+            currentFilter = null; // Clear stored filter
+            hideError();
+            loadAllRecords(); // Load today's records
+        });
+
+        // Export CSV
+        document.getElementById('exportCSV').addEventListener('click', () => {
+            const records = Array.from(document.querySelectorAll('#recordsTableBody tr'));
+            if (records.length === 0) return;
+
+            let csv = 'Date,Class,Student ID,Student Name,Status,Time\n';
+            records.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                csv += `${cells[0].textContent},${cells[1].textContent},${cells[2].textContent},${cells[3].textContent},${cells[4].textContent.trim()},${cells[5].textContent}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `attendance-records-${Date.now()}.csv`;
+            a.click();
+        });
+
+        // Error handling
+        function showError(message) {
+            const errorDiv = document.getElementById('filterError');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        function hideError() {
+            document.getElementById('filterError').classList.add('hidden');
+        }
+
+        // Load records and classes on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadClasses();
+            loadAllRecords();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timetable & Module Management - SSA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .tab-button {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        .tab-button.active {
+            border-bottom-color: #3b82f6;
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation Bar -->
+    <nav class="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <span class="text-xl font-bold">Student Service Admin</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="dashboard.html" class="hover:bg-white hover:bg-opacity-10 px-4 py-2 rounded">Dashboard</a>
+                    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-6">📚 Timetable & Module Management</h1>
+
+        <!-- Tabs -->
+        <div class="bg-white rounded-lg shadow-md mb-6">
+            <div class="flex border-b">
+                <button class="tab-button active" onclick="switchTab('modules')">📘 Module Assignment</button>
+                <button class="tab-button" onclick="switchTab('enrollment')">👥 Student Enrollment</button>
+                <button class="tab-button" onclick="switchTab('timetable')">📅 Timetable</button>
+            </div>
+        </div>
+
+        <!-- Module Assignment Tab -->
+        <div id="tab-modules" class="tab-content active">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Assign Lecturers to Modules</h2>
+                    <button onclick="openAddModuleModal()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">+ Add Module</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Module Code</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Module Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Current Lecturer</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Enrolled Students</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modulesTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student Enrollment Tab -->
+        <div id="tab-enrollment" class="tab-content">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-4">Enroll Students in Modules</h2>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Select Module:</label>
+                    <select id="enrollmentModuleSelect" class="w-full p-2 border rounded" onchange="loadModuleStudents()">
+                        <option value="">-- Select Module --</option>
+                    </select>
+                </div>
+
+                <div id="enrollmentContent" class="hidden">
+                    <!-- Student Filters -->
+                    <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                        <h3 class="font-bold mb-3">Filter Students</h3>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Intake Year:</label>
+                                <select id="filterIntakeYear" class="w-full p-2 border rounded" onchange="applyStudentFilters()">
+                                    <option value="">All Years</option>
+                                    <option value="2025/2026">2025/2026</option>
+                                    <option value="2024/2025">2024/2025</option>
+                                    <option value="2023/2024">2023/2024</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Intake Period:</label>
+                                <select id="filterIntakePeriod" class="w-full p-2 border rounded" onchange="applyStudentFilters()">
+                                    <option value="">All Periods</option>
+                                    <option value="April">April</option>
+                                    <option value="July">July</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Search:</label>
+                                <input type="text" id="searchAvailable" placeholder="ID or Name..." class="w-full p-2 border rounded" oninput="applyStudentFilters()">
+                            </div>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-600">
+                            Showing <span id="availableCount" class="font-bold">0</span> available students
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-6">
+                        <!-- Available Students -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="font-bold">Available Students</h3>
+                                <button onclick="selectAllAvailable()" class="text-sm text-blue-600 hover:underline">Select All</button>
+                            </div>
+                            <div id="availableStudents" class="border rounded p-4 h-96 overflow-y-auto">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                            <button onclick="enrollSelectedStudents()" class="mt-4 w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">
+                                Enroll Selected (<span id="selectedCount">0</span>) →
+                            </button>
+                        </div>
+
+                        <!-- Enrolled Students -->
+                        <div>
+                            <h3 class="font-bold mb-2">Enrolled Students (<span id="enrolledCount">0</span>)</h3>
+                            <input type="text" id="searchEnrolled" placeholder="Search enrolled..." class="w-full p-2 border rounded mb-2" oninput="filterStudents('enrolled')">
+                            <div id="enrolledStudents" class="border rounded p-4 h-96 overflow-y-auto">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timetable Tab -->
+        <div id="tab-timetable" class="tab-content">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Term Lesson Schedule</h2>
+                    <button onclick="openAddTimetableModal()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">+ Add Lesson</button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Day</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Module</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lecturer</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="timetableTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Lecturer Modal -->
+    <div id="assignLecturerModal" class="modal">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4">Assign Lecturer</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Module:</label>
+                <input type="text" id="modalModuleName" readonly class="w-full p-2 border rounded bg-gray-100">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Select Lecturer:</label>
+                <select id="modalLecturerSelect" class="w-full p-2 border rounded">
+                    <option value="">-- Select Lecturer --</option>
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="closeAssignLecturerModal()" class="flex-1 bg-gray-300 p-2 rounded hover:bg-gray-400">Cancel</button>
+                <button onclick="assignLecturer()" class="flex-1 bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Assign</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Module Modal -->
+    <div id="addModuleModal" class="modal">
+        <div class="bg-white rounded-lg p-6 w-full max-w-lg">
+            <h3 class="text-xl font-bold mb-4">Add New Module</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Module Code: *</label>
+                <input type="text" id="newModuleCode" class="w-full p-2 border rounded" placeholder="e.g., CS101">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Module Name: *</label>
+                <input type="text" id="newModuleName" class="w-full p-2 border rounded" placeholder="e.g., Introduction to Programming">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Description:</label>
+                <textarea id="newModuleDescription" class="w-full p-2 border rounded" rows="3" placeholder="Module description..."></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Credits:</label>
+                    <input type="number" id="newModuleCredits" class="w-full p-2 border rounded" value="3" min="1" max="10">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Term:</label>
+                    <select id="newModuleTerm" class="w-full p-2 border rounded">
+                        <option>Term 1</option>
+                        <option>Term 2</option>
+                        <option>Term 3</option>
+                        <option>Term 4</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Academic Year:</label>
+                <input type="text" id="newModuleYear" class="w-full p-2 border rounded" placeholder="e.g., 2024/2025" value="2024/2025">
+            </div>
+            <div class="flex gap-2">
+                <button onclick="closeAddModuleModal()" class="flex-1 bg-gray-300 p-2 rounded hover:bg-gray-400">Cancel</button>
+                <button onclick="addModule()" class="flex-1 bg-green-500 text-white p-2 rounded hover:bg-green-600">Create Module</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Timetable Modal -->
+    <div id="addTimetableModal" class="modal">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4">Add Lesson to Schedule</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Module:</label>
+                <select id="timetableModuleSelect" class="w-full p-2 border rounded">
+                    <option value="">-- Select Module --</option>
+                </select>
+            </div>
+
+            <!-- Schedule Type Selection -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Schedule Type:</label>
+                <div class="flex gap-4">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="radio" name="scheduleType" value="specific" onchange="toggleScheduleType()" class="mr-2">
+                        <span>Specific Date</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer">
+                        <input type="radio" name="scheduleType" value="recurring" checked onchange="toggleScheduleType()" class="mr-2">
+                        <span>Recurring Weekly</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Specific Date Input (hidden by default) -->
+            <div id="specificDateSection" class="mb-4 hidden">
+                <label class="block text-sm font-medium mb-2">Date:</label>
+                <input type="date" id="timetableDate" class="w-full p-2 border rounded" onchange="updateDayFromDate()">
+            </div>
+
+            <!-- Day of Week Input (shown by default) -->
+            <div id="recurringDaySection" class="mb-4">
+                <label class="block text-sm font-medium mb-2">Day of Week:</label>
+                <select id="timetableDaySelect" class="w-full p-2 border rounded">
+                    <option>Monday</option>
+                    <option>Tuesday</option>
+                    <option>Wednesday</option>
+                    <option>Thursday</option>
+                    <option>Friday</option>
+                    <option>Saturday</option>
+                    <option>Sunday</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Start Time:</label>
+                    <input type="time" id="timetableStartTime" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">End Time:</label>
+                    <input type="time" id="timetableEndTime" class="w-full p-2 border rounded">
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Room:</label>
+                <input type="text" id="timetableRoom" class="w-full p-2 border rounded" placeholder="e.g., Room 101">
+            </div>
+            <div class="flex gap-2">
+                <button onclick="closeAddTimetableModal()" class="flex-1 bg-gray-300 p-2 rounded hover:bg-gray-400">Cancel</button>
+                <button onclick="addTimetableEntry()" class="flex-1 bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../common/config.js"></script>
+    <script src="../../common/auth.js"></script>
+    <script>
+        // Force use of port 5010 for timetable management (don't use config.js port)
+        const API_BASE = 'http://localhost:5010';
+
+        let modules = [];
+        let lecturers = [];
+        let allStudents = [];
+        let enrolledStudents = [];
+        let selectedModuleId = null;
+        let selectedStudentIds = new Set();
+
+        // Authentication
+        requireAuth('student-service-admin');
+
+        // Tab Switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tab}`).classList.add('active');
+
+            if (tab === 'modules') loadModules();
+            if (tab === 'enrollment') loadModulesForEnrollment();
+            if (tab === 'timetable') loadTimetable();
+        }
+
+        // Load Modules
+        async function loadModules() {
+            try {
+                const res = await fetch(`${API_BASE}/api/ssa/modules`);
+                const data = await res.json();
+                if (data.ok) {
+                    modules = data.modules;
+                    renderModulesTable();
+                }
+            } catch (e) {
+                console.error('Error loading modules:', e);
+            }
+        }
+
+        function renderModulesTable() {
+            const tbody = document.getElementById('modulesTableBody');
+            tbody.innerHTML = modules.map(m => `
+                <tr>
+                    <td class="px-6 py-4">${m.module_code}</td>
+                    <td class="px-6 py-4">${m.module_name}</td>
+                    <td class="px-6 py-4">${m.lecturer_first_name ? `${m.lecturer_first_name} ${m.lecturer_last_name}` : '<span class="text-gray-400">Not Assigned</span>'}</td>
+                    <td class="px-6 py-4">${m.enrolled_count || 0} students</td>
+                    <td class="px-6 py-4">
+                        <button onclick="openAssignLecturerModal(${m.id}, '${m.module_code} - ${m.module_name}')" class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
+                            ${m.lecturer_id ? 'Change' : 'Assign'} Lecturer
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Add Module
+        function openAddModuleModal() {
+            // Clear form
+            document.getElementById('newModuleCode').value = '';
+            document.getElementById('newModuleName').value = '';
+            document.getElementById('newModuleDescription').value = '';
+            document.getElementById('newModuleCredits').value = '3';
+            document.getElementById('newModuleTerm').value = 'Term 1';
+            document.getElementById('newModuleYear').value = '2024/2025';
+
+            document.getElementById('addModuleModal').classList.add('active');
+        }
+
+        function closeAddModuleModal() {
+            document.getElementById('addModuleModal').classList.remove('active');
+        }
+
+        async function addModule() {
+            const moduleCode = document.getElementById('newModuleCode').value.trim();
+            const moduleName = document.getElementById('newModuleName').value.trim();
+            const description = document.getElementById('newModuleDescription').value.trim();
+            const credits = document.getElementById('newModuleCredits').value;
+            const term = document.getElementById('newModuleTerm').value;
+            const academicYear = document.getElementById('newModuleYear').value.trim();
+
+            if (!moduleCode || !moduleName) {
+                return alert('Module Code and Module Name are required');
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/api/ssa/modules`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        module_code: moduleCode,
+                        module_name: moduleName,
+                        description: description,
+                        credits: parseInt(credits),
+                        term: term,
+                        academic_year: academicYear
+                    })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    alert('Module created successfully!');
+                    closeAddModuleModal();
+                    loadModules();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Error creating module: ' + e.message);
+            }
+        }
+
+        // Lecturer Assignment
+        async function openAssignLecturerModal(moduleId, moduleName) {
+            selectedModuleId = moduleId;
+            document.getElementById('modalModuleName').value = moduleName;
+
+            if (lecturers.length === 0) {
+                const res = await fetch(`${API_BASE}/api/ssa/lecturers`);
+                const data = await res.json();
+                if (data.ok) lecturers = data.lecturers;
+            }
+
+            const select = document.getElementById('modalLecturerSelect');
+            select.innerHTML = '<option value="">-- Select Lecturer --</option>' +
+                lecturers.map(l => `<option value="${l.id}">${l.first_name} ${l.last_name} (${l.email})</option>`).join('');
+
+            document.getElementById('assignLecturerModal').classList.add('active');
+        }
+
+        function closeAssignLecturerModal() {
+            document.getElementById('assignLecturerModal').classList.remove('active');
+        }
+
+        async function assignLecturer() {
+            const lecturerId = document.getElementById('modalLecturerSelect').value;
+            if (!lecturerId) return alert('Please select a lecturer');
+
+            try {
+                const res = await fetch(`${API_BASE}/api/ssa/modules/${selectedModuleId}/assign-lecturer`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({lecturer_id: lecturerId})
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    alert('Lecturer assigned successfully!');
+                    closeAssignLecturerModal();
+                    loadModules();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Error assigning lecturer: ' + e.message);
+            }
+        }
+
+        // Student Enrollment
+        async function loadModulesForEnrollment() {
+            if (modules.length === 0) await loadModules();
+            const select = document.getElementById('enrollmentModuleSelect');
+            select.innerHTML = '<option value="">-- Select Module --</option>' +
+                modules.map(m => `<option value="${m.id}">${m.module_code} - ${m.module_name}</option>`).join('');
+        }
+
+        async function loadModuleStudents() {
+            const moduleId = document.getElementById('enrollmentModuleSelect').value;
+            if (!moduleId) {
+                document.getElementById('enrollmentContent').classList.add('hidden');
+                return;
+            }
+
+            selectedModuleId = moduleId;
+            document.getElementById('enrollmentContent').classList.remove('hidden');
+
+            // Load all students if not loaded
+            if (allStudents.length === 0) {
+                const res = await fetch(`${API_BASE}/api/ssa/students`);
+                const data = await res.json();
+                if (data.ok) allStudents = data.students;
+            }
+
+            // Load enrolled students
+            const res = await fetch(`${API_BASE}/api/ssa/modules/${moduleId}/students`);
+            const data = await res.json();
+            if (data.ok) enrolledStudents = data.students;
+
+            renderStudentLists();
+        }
+
+        function renderStudentLists() {
+            const enrolledIds = new Set(enrolledStudents.map(s => s.id));
+            let available = allStudents.filter(s => !enrolledIds.has(s.id));
+
+            console.log('Total students:', allStudents.length);
+            console.log('Available before filters:', available.length);
+
+            // Apply filters
+            const filterYear = document.getElementById('filterIntakeYear').value;
+            const filterPeriod = document.getElementById('filterIntakePeriod').value;
+            const searchTerm = document.getElementById('searchAvailable').value.toLowerCase();
+
+            if (filterYear) {
+                // Extract first year from academic year format (e.g., "2024/2025" → "2024")
+                const yearToMatch = filterYear.split('/')[0];
+                console.log('Filtering by year:', filterYear, '→', yearToMatch);
+                console.log('Sample student intake_year:', available[0]?.intake_year, typeof available[0]?.intake_year);
+                available = available.filter(s => {
+                    // Handle both string and number comparison
+                    return String(s.intake_year) === yearToMatch ||
+                           String(s.intake_year) === filterYear ||
+                           s.intake_year == yearToMatch;
+                });
+                console.log('Available after year filter:', available.length);
+            }
+
+            if (filterPeriod) {
+                available = available.filter(s => s.intake_period && s.intake_period.toLowerCase() === filterPeriod.toLowerCase());
+            }
+
+            if (searchTerm) {
+                available = available.filter(s =>
+                    s.student_id.toLowerCase().includes(searchTerm) ||
+                    `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            // Update available count
+            document.getElementById('availableCount').textContent = available.length;
+
+            document.getElementById('availableStudents').innerHTML = available.length > 0 ? available.map(s => `
+                <label class="flex items-center p-2 hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" value="${s.id}" onchange="toggleStudentSelection(${s.id})" class="mr-2">
+                    <span class="flex-1">${s.student_id} - ${s.first_name} ${s.last_name}</span>
+                    <span class="text-xs text-gray-500">${s.intake_period || 'N/A'} ${s.intake_year || ''}</span>
+                </label>
+            `).join('') : '<div class="text-gray-500 text-center p-4">No students match the filters</div>';
+
+            document.getElementById('enrolledStudents').innerHTML = enrolledStudents.map(s => `
+                <div class="flex justify-between items-center p-2 hover:bg-gray-50">
+                    <span>${s.student_id} - ${s.first_name} ${s.last_name}</span>
+                    <button onclick="unenrollStudent(${s.id})" class="text-red-500 text-sm hover:text-red-700">Remove</button>
+                </div>
+            `).join('');
+
+            document.getElementById('enrolledCount').textContent = enrolledStudents.length;
+        }
+
+        function applyStudentFilters() {
+            renderStudentLists();
+        }
+
+        function selectAllAvailable() {
+            const checkboxes = document.querySelectorAll('#availableStudents input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+                selectedStudentIds.add(parseInt(cb.value));
+            });
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            document.getElementById('selectedCount').textContent = selectedStudentIds.size;
+        }
+
+        function toggleStudentSelection(studentId) {
+            if (selectedStudentIds.has(studentId)) {
+                selectedStudentIds.delete(studentId);
+            } else {
+                selectedStudentIds.add(studentId);
+            }
+            updateSelectedCount();
+        }
+
+        async function enrollSelectedStudents() {
+            if (selectedStudentIds.size === 0) return alert('Please select students to enroll');
+
+            try {
+                const res = await fetch(`${API_BASE}/api/ssa/modules/${selectedModuleId}/enroll`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({student_ids: Array.from(selectedStudentIds)})
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    alert(data.message);
+                    selectedStudentIds.clear();
+                    updateSelectedCount();
+                    loadModuleStudents();
+                }
+            } catch (e) {
+                alert('Error enrolling students: ' + e.message);
+            }
+        }
+
+        async function unenrollStudent(studentId) {
+            if (!confirm('Remove this student from the module?')) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/ssa/modules/${selectedModuleId}/unenroll/${studentId}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    alert('Student removed successfully');
+                    loadModuleStudents();
+                }
+            } catch (e) {
+                alert('Error removing student: ' + e.message);
+            }
+        }
+
+        function filterStudents(type) {
+            const search = document.getElementById(`search${type === 'available' ? 'Available' : 'Enrolled'}`).value.toLowerCase();
+            const container = document.getElementById(`${type}Students`);
+            const items = container.querySelectorAll('label, div');
+            items.forEach(item => {
+                item.style.display = item.textContent.toLowerCase().includes(search) ? '' : 'none';
+            });
+        }
+
+        // Timetable
+        async function loadTimetable() {
+            try {
+                const res = await fetch(`${API_BASE}/api/ssa/timetable`);
+                const data = await res.json();
+                if (data.ok) {
+                    renderTimetableTable(data.timetables);
+                }
+            } catch (e) {
+                console.error('Error loading timetable:', e);
+            }
+        }
+
+        function renderTimetableTable(timetables) {
+            const tbody = document.getElementById('timetableTableBody');
+            tbody.innerHTML = timetables.map(t => {
+                // Format date for display - check both possible property names
+                let dateDisplay = 'Recurring';
+                const dateValue = t.class_date || t.classDate;
+
+                if (dateValue) {
+                    try {
+                        // Handle both string and Date object formats
+                        const dateStr = typeof dateValue === 'string' ? dateValue : dateValue.toString();
+                        const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+
+                        if (!isNaN(date.getTime())) {
+                            dateDisplay = date.toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric'
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Error formatting date:', dateValue, e);
+                        dateDisplay = dateValue; // Show raw value if formatting fails
+                    }
+                }
+
+                return `
+                <tr>
+                    <td class="px-6 py-4 font-semibold">${dateDisplay}</td>
+                    <td class="px-6 py-4">${t.day_of_week}</td>
+                    <td class="px-6 py-4">${t.start_time} - ${t.end_time}</td>
+                    <td class="px-6 py-4">${t.module_code} - ${t.module_name}</td>
+                    <td class="px-6 py-4">${t.lecturer_first_name ? `${t.lecturer_first_name} ${t.lecturer_last_name}` : 'N/A'}</td>
+                    <td class="px-6 py-4">${t.room || 'N/A'}</td>
+                    <td class="px-6 py-4">
+                        <button onclick="deleteTimetable(${t.id})" class="text-red-500 hover:text-red-700 text-sm">Delete</button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        async function openAddTimetableModal() {
+            if (modules.length === 0) await loadModules();
+            const select = document.getElementById('timetableModuleSelect');
+            select.innerHTML = '<option value="">-- Select Module --</option>' +
+                modules.map(m => `<option value="${m.id}">${m.module_code} - ${m.module_name}</option>`).join('');
+
+            // Reset to specific date by default
+            document.querySelector('input[name="scheduleType"][value="specific"]').checked = true;
+            toggleScheduleType();
+
+            // Set default date to today
+            document.getElementById('timetableDate').value = new Date().toISOString().split('T')[0];
+
+            document.getElementById('addTimetableModal').classList.add('active');
+        }
+
+        function closeAddTimetableModal() {
+            document.getElementById('addTimetableModal').classList.remove('active');
+        }
+
+        function toggleScheduleType() {
+            const scheduleType = document.querySelector('input[name="scheduleType"]:checked').value;
+            const specificDateSection = document.getElementById('specificDateSection');
+            const recurringDaySection = document.getElementById('recurringDaySection');
+
+            if (scheduleType === 'specific') {
+                specificDateSection.classList.remove('hidden');
+                recurringDaySection.classList.add('hidden');
+            } else {
+                specificDateSection.classList.add('hidden');
+                recurringDaySection.classList.remove('hidden');
+            }
+        }
+
+        function updateDayFromDate() {
+            const dateInput = document.getElementById('timetableDate').value;
+            if (!dateInput) return;
+
+            const date = new Date(dateInput + 'T00:00:00');
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const dayOfWeek = days[date.getDay()];
+
+            document.getElementById('timetableDaySelect').value = dayOfWeek;
+        }
+
+        async function addTimetableEntry() {
+            const moduleId = document.getElementById('timetableModuleSelect').value;
+            const startTime = document.getElementById('timetableStartTime').value;
+            const endTime = document.getElementById('timetableEndTime').value;
+            const room = document.getElementById('timetableRoom').value;
+
+            if (!moduleId || !startTime || !endTime) {
+                return alert('Please fill all required fields');
+            }
+
+            const scheduleType = document.querySelector('input[name="scheduleType"]:checked').value;
+            let classDate = null;
+            let dayOfWeek = null;
+
+            if (scheduleType === 'specific') {
+                classDate = document.getElementById('timetableDate').value;
+                if (!classDate) {
+                    return alert('Please select a date');
+                }
+                // Auto-calculate day of week from date
+                const date = new Date(classDate + 'T00:00:00');
+                const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                dayOfWeek = days[date.getDay()];
+            } else {
+                dayOfWeek = document.getElementById('timetableDaySelect').value;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/api/ssa/timetable`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        module_id: moduleId,
+                        day_of_week: dayOfWeek,
+                        start_time: startTime,
+                        end_time: endTime,
+                        room: room,
+                        class_date: classDate
+                    })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    alert('Timetable entry added successfully!');
+                    closeAddTimetableModal();
+                    loadTimetable();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Error adding timetable: ' + e.message);
+            }
+        }
+
+        async function deleteTimetable(id) {
+            if (!confirm('Delete this timetable entry?')) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/ssa/timetable/${id}`, {method: 'DELETE'});
+                const data = await res.json();
+                if (data.ok) {
+                    alert('Deleted successfully');
+                    loadTimetable();
+                }
+            } catch (e) {
+                alert('Error deleting: ' + e.message);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadModules();
+        });
+    </script>
+</body>
+</html>

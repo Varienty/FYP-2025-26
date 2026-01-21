@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Session Control</title>
+    <style>
+        /* CSS for centering the content on the screen */
+        body {
+            /* Full viewport height, background color */
+            min-height: 100vh;
+            background-color: #f4f4f4; /* Light gray background */
+            margin: 0;
+            display: flex; /* Enable Flexbox */
+            align-items: center; /* Center item vertically */
+            justify-content: center; /* Center item horizontally */
+            font-family: Arial, sans-serif;
+        }
+
+        /* Style for the container card */
+        .logout-container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 90%;
+            text-align: center; /* Center text inside the container */
+        }
+
+        /* Header styling */
+        header h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        /* Button styling */
+        .logout-button {
+            padding: 12px 25px;
+            background-color: #d9534f; /* Red color */
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+
+        .logout-button:hover {
+            background-color: #c9302c;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="logout-container">
+        <header>
+            <h2>System Administrator Dashboard</h2>
+            <p>You are currently logged in. Click the button below to end your secure session.</p>
+        </header>
+
+        <button id="logoutBtn" class="logout-button">🔒 Log Out Safely</button>
+    </div>
+
+    <script src="../../common/config.js"></script>
+    <script src="../../common/auth.js"></script>
+    <script>
+        requireAuth('system-admin');
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            logout();
+        });
+    </script>
+</body>
+</html>

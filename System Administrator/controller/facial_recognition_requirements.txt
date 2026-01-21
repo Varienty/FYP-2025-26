@@ -1,0 +1,13 @@
+# Facial Recognition Requirements
+# Install with: pip install -r facial_recognition_requirements.txt
+
+# Core dependencies
+opencv-python>=4.8.0
+opencv-contrib-python>=4.8.0
+numpy>=1.24.0
+flask>=2.3.0
+flask-cors>=4.0.0
+
+# Database connectivity (if not already installed)
+mysql-connector-python>=8.0.33
+python-dotenv>=1.0.0

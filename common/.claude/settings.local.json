@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(kill:*)",
+      "Bash(curl:*)",
+      "Bash(python:*)",
+      "Bash(pkill:*)",
+      "Bash(python3:*)",
+      "Bash(/Applications/XAMPP/xamppfiles/bin/mysql:*)",
+      "Bash(pip3 install:*)"
+    ]
+  }
+}
