@@ -1,23 +1,37 @@
 // Global API Configuration
-// Set API_BASE to your backend server base URLs
+// Automatically detects environment (localhost vs AWS)
 
-// For same-origin deployments, leave as ''
-// window.API_BASE = '';
+// Detect if running on localhost (development) or AWS (production)
+function getApiBase() {
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+    
+    // Localhost development - use multiple ports
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://localhost:5000';  // Single unified backend
+    }
+    
+    // AWS Elastic Beanstalk or any other domain - use same origin
+    // This works because all endpoints are now unified at port 5000
+    return `${protocol}//${hostname}`;
+}
 
-// Development Flask servers - different ports for different roles
+const API_BASE = getApiBase();
+
+// All endpoints now point to the unified backend
 window.API_ENDPOINTS = {
-    lecturer: 'http://localhost:5003',
-    'lecturer-auth': 'http://localhost:5003',
-    'lecturer-attendance': 'http://localhost:5004',
-    'lecturer-reports': 'http://localhost:5005',
-    'lecturer-schedule': 'http://localhost:5006',
-    'lecturer-notifications': 'http://localhost:5007',
-    'student-service-admin': 'http://localhost:5008',
-    'system-admin': 'http://localhost:5009'
+    lecturer: API_BASE,
+    'lecturer-auth': API_BASE,
+    'lecturer-attendance': API_BASE,
+    'lecturer-reports': API_BASE,
+    'lecturer-schedule': API_BASE,
+    'lecturer-notifications': API_BASE,
+    'student-service-admin': API_BASE,
+    'system-admin': API_BASE
 };
 
-// Legacy support - default to lecturer port
-window.API_BASE = 'http://localhost:5003';
+// Legacy support - all now use same API_BASE
+window.API_BASE = API_BASE;
 
 // API endpoint mapping for convenience
 window.API_ROUTES = {
