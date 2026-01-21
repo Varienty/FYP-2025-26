@@ -326,34 +326,7 @@ CREATE TABLE IF NOT EXISTS reports (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_generated_by (generated_by_type, generated_by_id)
 );
--- ==========================================
--- INSERT devices Table
--- ==========================================
-CREATE TABLE IF NOT EXISTS devices (
-      id VARCHAR(100) PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      type VARCHAR(50) NOT NULL,
-      status VARCHAR(20) DEFAULT 'offline',
-      last_seen DATETIME NULL,
-      latency_ms INT DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
--- ==========================================
--- INSERT System Alerts Table
--- ==========================================
-  CREATE TABLE IF NOT EXISTS system_alerts (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      alert_type VARCHAR(50) NOT NULL,
-      severity VARCHAR(20) NOT NULL,
-      title VARCHAR(255) NOT NULL,
-      description TEXT,
-      device_id VARCHAR(100),
-      status VARCHAR(20) DEFAULT 'active',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      acknowledged_by VARCHAR(100) NULL,
-      acknowledged_at DATETIME NULL,
-      resolved_at DATETIME NULL,
-      FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL
+
 -- ==========================================
 -- INSERT SAMPLE DATA
 -- ==========================================
@@ -430,35 +403,3 @@ INSERT INTO student_enrollments (student_id, class_id, status) VALUES
 (3, 1, 'active'),
 (4, 2, 'active'),
 (4, 3, 'active');
--- sql/schema.sql
--- Create tables for policies, devices, and staff (permissions)
-
-CREATE TABLE IF NOT EXISTS policies (
-  id VARCHAR(64) PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  min_percentage TINYINT UNSIGNED NOT NULL DEFAULT 75,
-  grace INT UNSIGNED DEFAULT 10,
-  late INT UNSIGNED DEFAULT 30,
-  scope ENUM('global','department','course') DEFAULT 'global',
-  active_from DATE NULL,
-  active_to DATE NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS devices (
-  id VARCHAR(64) PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  type VARCHAR(50) NOT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'online',
-  last_seen DATETIME NULL,
-  latency_ms INT DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS staff (
-  id VARCHAR(64) PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  roles_json TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
