@@ -32,6 +32,20 @@ def health():
     """Health endpoint for load balancer"""
     return jsonify({'status': 'ok', 'service': 'attendance-system'}), 200
 
+@app.route('/health/db', methods=['GET'])
+def health_db():
+    """Check database connectivity and basic status"""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
+        cur.fetchone()
+        cur.close()
+        conn.close()
+        return jsonify({'db': 'ok'}), 200
+    except Exception as e:
+        return jsonify({'db': 'error', 'message': str(e)}), 500
+
 @app.route('/', methods=['GET'])
 def index():
     """Serve login page"""

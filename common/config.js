@@ -16,7 +16,14 @@ function getApiBase() {
     return `${protocol}//${hostname}`;
 }
 
-const API_BASE = getApiBase();
+// Allow runtime override for static hosting (e.g., S3/CloudFront)
+// Set window.APP_CONFIG = { API_BASE_URL: "https://your-backend.example.com" } before this script
+let API_BASE = getApiBase();
+try {
+    if (window.APP_CONFIG && typeof window.APP_CONFIG.API_BASE_URL === 'string' && window.APP_CONFIG.API_BASE_URL.trim() !== '') {
+        API_BASE = window.APP_CONFIG.API_BASE_URL.trim().replace(/\/$/, ''); // strip trailing slash
+    }
+} catch (_) { /* ignore if window not available */ }
 
 // All endpoints now point to the unified backend
 window.API_ENDPOINTS = {

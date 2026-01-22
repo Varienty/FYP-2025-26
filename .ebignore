@@ -57,3 +57,5 @@ docs/
 .env
 .env.local
 .env.*.local
+
+# Note: SQL files ARE included for database migration
