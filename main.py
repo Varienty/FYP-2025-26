@@ -66,6 +66,51 @@ def serve_static(filename):
     return send_from_directory('common', filename)
 
 # ============================================================================
+# SERVE DASHBOARD PAGES & BOUNDARY FILES
+# ============================================================================
+
+# System Administrator pages
+@app.route('/System%20Administrator/boundary/<path:filename>', methods=['GET'])
+@app.route('/System%20Administrator/boundary', methods=['GET'], defaults={'filename': 'dashboard.html'})
+def serve_sysadmin_page(filename='dashboard.html'):
+    """Serve System Admin pages"""
+    try:
+        return send_from_directory('System Administrator/boundary', filename)
+    except FileNotFoundError:
+        return jsonify({'error': 'Page not found'}), 404
+
+# Student Service Administrator pages
+@app.route('/Student%20Service%20Administrator/boundary/<path:filename>', methods=['GET'])
+@app.route('/Student%20Service%20Administrator/boundary', methods=['GET'], defaults={'filename': 'dashboard.html'})
+def serve_ssa_page(filename='dashboard.html'):
+    """Serve SSA pages"""
+    try:
+        return send_from_directory('Student Service Administrator/boundary', filename)
+    except FileNotFoundError:
+        return jsonify({'error': 'Page not found'}), 404
+
+# Lecturer pages
+@app.route('/Lecturer/boundary/<path:filename>', methods=['GET'])
+@app.route('/Lecturer/boundary', methods=['GET'], defaults={'filename': 'dashboard.html'})
+def serve_lecturer_page(filename='dashboard.html'):
+    """Serve Lecturer pages"""
+    try:
+        return send_from_directory('Lecturer/boundary', filename)
+    except FileNotFoundError:
+        return jsonify({'error': 'Page not found'}), 404
+
+# Common auth pages (forgot_password, reset_password)
+@app.route('/<path:filename>', methods=['GET'])
+def serve_common_page(filename):
+    """Serve common pages (forgot_password.html, reset_password.html, etc.)"""
+    if filename.endswith('.html'):
+        try:
+            return send_from_directory('common', filename)
+        except FileNotFoundError:
+            return jsonify({'error': 'Page not found'}), 404
+    return jsonify({'error': 'Not found'}), 404
+
+# ============================================================================
 # AUTHENTICATION ENDPOINTS
 # ============================================================================
 
