@@ -1,24 +1,25 @@
 # FYP Team 15 - Attendance Management System
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status: In Development](https://img.shields.io/badge/Status-In%20Development-yellow.svg)]()
+[![Status: Production](https://img.shields.io/badge/Status-Production-green.svg)]()
+[![AWS: Deployed](https://img.shields.io/badge/AWS-Deployed-orange.svg)]()
 
-A comprehensive web-based attendance management system with facial recognition capabilities, designed for educational institutions. Features role-based access control with three distinct user roles: Student Service Administrator, System Administrator, and Lecturer.
+A comprehensive web-based attendance management system with facial recognition capabilities, designed for educational institutions. Features role-based access control with four distinct user roles: System Administrator, Student Service Administrator, Lecturer, and Student.
+
+**🌐 Live Demo:** http://fyp-flask-env.eba-8ev8txxm.ap-southeast-1.elasticbeanstalk.com
 
 ## 📋 Table of Contents
 
 - [Features](#features)
 - [System Architecture](#system-architecture)
 - [User Roles](#user-roles)
-- [Technology Stack](#technology-stack)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
+- [Quick Start](#quick-start)
 - [Demo Credentials](#demo-credentials)
-- [API Documentation](#api-documentation)
+- [Project Structure](#project-structure)
+- [Documentation](#documentation)
 - [Database Schema](#database-schema)
-- [Development Status](#development-status)
+- [API Documentation](#api-documentation)
 - [Contributing](#contributing)
-- [License](#license)
 
 ## ✨ Features
 
@@ -249,54 +250,36 @@ Local `auth.js` and `config.js` files have been removed from all role-specific b
 ### Configuration
 Ensure `API_BASE` in `common/config.js` points to the correct backend host/port for your environment (default: `http://localhost:5003` for development).
 
-## 🚀 Getting Started
+## 🚀 Quick Start
 
-**📘 For complete setup instructions, see [GETTING_STARTED.md](GETTING_STARTED.md)**
+### Access Live Demo (Fastest!)
+1. Visit: http://fyp-flask-env.eba-8ev8txxm.ap-southeast-1.elasticbeanstalk.com
+2. Login with demo credentials (see [Demo Credentials](#demo-credentials))
+3. Start testing immediately!
 
-This comprehensive guide includes:
-- ✅ Step-by-step installation
-- ✅ Database setup and configuration
-- ✅ Starting all controllers (with port numbers)
-- ✅ Website access instructions
-- ✅ Running all tests
-- ✅ Complete user guide for all 3 roles
-- ✅ Troubleshooting common issues
-
-### Quick Start (5 Minutes)
-
-1. **Install Prerequisites**
-   - Python 3.8+, MySQL 8.0+, Git
-
-2. **Setup Database**
+### Local Development Setup
+1. **Install Prerequisites:** Python 3.8+, MySQL 8.0+
+2. **Setup Database:**
    ```powershell
    mysql -u root -p
    CREATE DATABASE student_attendance;
    source sql/schema.sql;
-   source sql/additional_data.sql;
    ```
+3. **Configure Environment:** Create `.env` with database credentials
+4. **Install Dependencies:** `pip install -r requirements.txt`
+5. **Start Application:** `python main.py`
+6. **Access:** http://localhost:5000
 
-3. **Configure Environment**
-   Create `.env` file:
-   ```env
-   DB_HOST=localhost
-   DB_USER=root
-   DB_PASSWORD=your_password
-   DB_NAME=student_attendance
-   ```
+📘 **Full Setup Guide:** [GETTING_STARTED.md](GETTING_STARTED.md)
 
-4. **Install Dependencies**
-   ```powershell
-   pip install -r requirements.txt
-   ```
+## 📚 Documentation
 
-5. **Start All Controllers** (One Command!)
-   ```powershell
-   .\start_all_controllers.ps1
-   ```
-   - ✅ Launches all 7 controllers at once
-   - ✅ Runs in background windows
-   - ✅ Press Ctrl+C to stop all
-   
+| Document | Description |
+|----------|-------------|
+| **[GETTING_STARTED.md](GETTING_STARTED.md)** | Complete local development setup guide |
+| **[AWS_DEPLOYMENT.md](AWS_DEPLOYMENT.md)** | AWS Elastic Beanstalk deployment guide |
+| **[DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)** | Current production deployment status |
+| **[DEMO_CREDENTIALS.md](DEMO_CREDENTIALS.md)** | Complete test account reference |
    *Alternative: Start manually (see GETTING_STARTED.md)*
 
 6. **Access Website**
@@ -461,25 +444,61 @@ For comprehensive testing instructions, see:
 
 ## 🔑 Demo Credentials
 
-### All Roles (Generic)
-- **Username**: `admin`
-- **Password**: `password`
+**All accounts use password:** `password`
 
-### Lecturer (Email-based - Production Data)
-- **Email**: `john.smith@university.com` (LEC001)
-- **Email**: `jane.doe@university.com` (LEC002)
-- **Email**: `mike.johnson@university.com` (LEC003)
-- **Password**: `password` (all accounts)
+### System Administrator
+- **Email**: `admin@attendance.com`
+- **User ID**: SYSADMIN001
+- **Name**: System Administrator
+- **Access**: Full system administration, user management, policy configuration
 
-### Student Service Admins (Production Data)
-- **Email**: `studentservice@attendance.com` (SSA001)
-- **Email**: `registry@university.com` (SSA002)
-- **Password**: `password` (all accounts)
+### Student Service Administrator
+- **Email**: `studentservice@attendance.com`
+- **User ID**: SSA001
+- **Name**: Student Service Administrator
+- **Access**: Manual attendance marking, student records, compliance reports
 
-### System Admins (Production Data)
-- **Email**: `admin@attendance.com` (SYSADMIN001)
-- **Email**: `sysadmin@university.com` (SYSADMIN002)
-- **Password**: `password` (all accounts)
+- **Email**: `registry@university.com`
+- **User ID**: SSA002
+- **Name**: Registry Officer
+- **Access**: Attendance management, student records, reports
+
+### Lecturer
+- **Email**: `john.smith@university.com`
+- **User ID**: LEC001
+- **Name**: John Smith
+- **Department**: Computer Science
+
+- **Email**: `jane.doe@university.com`
+- **User ID**: LEC002
+- **Name**: Jane Doe
+- **Department**: Computer Science
+
+- **Email**: `mike.johnson@university.com`
+- **User ID**: LEC003
+- **Name**: Mike Johnson
+- **Department**: Computer Science
+
+### Student
+- **Email**: `alice.wong@student.edu`
+- **User ID**: STU2025001
+- **Name**: Alice Wong
+- **Program**: Computer Science
+
+- **Email**: `bob.tan@student.edu`
+- **User ID**: STU2025002
+- **Name**: Bob Tan
+- **Program**: Computer Science
+
+- **Email**: `charlie.lee@student.edu`
+- **User ID**: STU2024003
+- **Name**: Charlie Lee
+- **Program**: Information Technology
+
+- **Email**: `diana.kumar@student.edu`
+- **User ID**: STU2024004
+- **Name**: Diana Kumar
+- **Program**: Software Engineering
 
 ### Reset Password Demo Tokens
 - Any token starting with `demo-token-` is accepted

@@ -64,10 +64,14 @@ Lecturer/
 
 **Demo Credentials:**
 - Email: `john.smith@university.com`
-- Password: `password123`
+- Password: `password`
 - Lecturer ID: `LEC001`
 - Name: John Smith
-- Classes: CS101, CS104, CS204, CS304, CS404, CS407
+- Department: Computer Science
+
+Other available lecturer accounts:
+- `jane.doe@university.com` (LEC002 - Jane Doe)
+- `mike.johnson@university.com` (LEC003 - Mike Johnson)
 
 ### Password Reset (US13 - Sequence Diagram #13)
 1. User clicks "Forgot Password" link on login page
