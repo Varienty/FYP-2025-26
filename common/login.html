@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Unified Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="./config.js"></script>
+  <!-- Use absolute static path so it works from root and subpages -->
+  <script src="/static/config.js"></script>
 </head>
 <body class="bg-gradient-to-r from-sky-500 to-indigo-600 min-h-screen flex items-center justify-center">
   <div class="w-full max-w-lg p-8 bg-white rounded-lg shadow-lg">
@@ -43,9 +44,10 @@
 
     <div class="mt-4 text-center text-sm text-gray-600">
       Demo credentials:<br>
-      <strong>SSA:</strong> studentservice@attendance.com / password<br>
-      <strong>System Admin:</strong> admin@attendance.com / password<br>
-      <strong>Lecturer:</strong> john.smith@university.com / password
+      <strong>System Admin:</strong> admin@example.com / password<br>
+      <strong>SSA:</strong> ssa@example.com / password<br>
+      <strong>Lecturer:</strong> lecturer@example.com / password<br>
+      <strong>Student:</strong> student@example.com / password
     </div>
 
     <div class="mt-4 text-xs text-gray-500 text-center">
