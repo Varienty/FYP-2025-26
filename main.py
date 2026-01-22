@@ -203,9 +203,9 @@ def server_error(error):
 # SERVE DASHBOARD PAGES & BOUNDARY FILES (MUST BE AFTER API ROUTES)
 # ============================================================================
 
-# System Administrator pages
-@app.route('/System%20Administrator/boundary/<path:filename>', methods=['GET'])
-@app.route('/System%20Administrator/boundary', methods=['GET'], defaults={'filename': 'dashboard.html'})
+# System Administrator pages (use literal spaces; Flask matches URL-encoded '%20' too)
+@app.route('/System Administrator/boundary/<path:filename>', methods=['GET'])
+@app.route('/System Administrator/boundary', methods=['GET'], defaults={'filename': 'dashboard.html'})
 def serve_sysadmin_page(filename='dashboard.html'):
     """Serve System Admin pages"""
     try:
@@ -213,9 +213,9 @@ def serve_sysadmin_page(filename='dashboard.html'):
     except FileNotFoundError:
         return jsonify({'error': 'Page not found'}), 404
 
-# Student Service Administrator pages
-@app.route('/Student%20Service%20Administrator/boundary/<path:filename>', methods=['GET'])
-@app.route('/Student%20Service%20Administrator/boundary', methods=['GET'], defaults={'filename': 'dashboard.html'})
+# Student Service Administrator pages (literal spaces)
+@app.route('/Student Service Administrator/boundary/<path:filename>', methods=['GET'])
+@app.route('/Student Service Administrator/boundary', methods=['GET'], defaults={'filename': 'dashboard.html'})
 def serve_ssa_page(filename='dashboard.html'):
     """Serve SSA pages"""
     try:
