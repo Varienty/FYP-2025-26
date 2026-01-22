@@ -37,6 +37,9 @@
             localStorage.removeItem('lecturer_active_session');
             localStorage.removeItem('lecturer_notifications');
             
+            // Clear all sessionStorage and localStorage
+            sessionStorage.clear();
+            
             // Try to notify server (non-blocking)
             const apiBase = window.location.origin || '';
             fetch(apiBase + '/api/auth/logout', { 
@@ -45,14 +48,13 @@
                 credentials: 'include'
             }).catch(() => console.log('Server logout notification failed'));
             
-            // Redirect to login after clearing session
-            setTimeout(() => {
-                window.location.href = window.location.origin + '/';
-            }, 100);
+            // Redirect to login page - use relative path or absolute path
+            const loginPath = window.location.origin ? window.location.origin + '/' : '/';
+            window.location.replace(loginPath);
         } catch (e) {
             console.error('Logout error:', e);
             // Still try to redirect even if error
-            window.location.href = window.location.origin + '/';
+            window.location.replace(window.location.origin ? window.location.origin + '/' : '/');
         }
     };
 
