@@ -30,17 +30,30 @@
     };
 
     window.logout = function() {
-        const apiBase = window.location.origin || '';
-        // Use unified logout endpoint
-        fetch(apiBase + '/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-        .catch(() => console.log('Server logout failed, clearing local session'))
-        .finally(() => {
+        try {
+            // Clear session immediately
             sessionStorage.removeItem('auth_user');
             sessionStorage.removeItem('isAuthenticated');
             localStorage.removeItem('lecturer_active_session');
             localStorage.removeItem('lecturer_notifications');
+            
+            // Try to notify server (non-blocking)
+            const apiBase = window.location.origin || '';
+            fetch(apiBase + '/api/auth/logout', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+            }).catch(() => console.log('Server logout notification failed'));
+            
+            // Redirect to login after clearing session
+            setTimeout(() => {
+                window.location.href = window.location.origin + '/';
+            }, 100);
+        } catch (e) {
+            console.error('Logout error:', e);
+            // Still try to redirect even if error
             window.location.href = window.location.origin + '/';
-        });
+        }
     };
 
     window.displayUserInfo = function() {
