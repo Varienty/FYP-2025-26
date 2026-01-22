@@ -203,7 +203,8 @@
 
             try {
                 // Use facial recognition API to get current session
-                const response = await fetch(`http://127.0.0.1:5011/api/facial-recognition/sessions/current`);
+                const apiBase = window.location.origin || 'http://localhost:5000';
+                const response = await fetch(`${apiBase}/api/facial-recognition/sessions/current`);
 
                 console.log('Response status:', response.status);
 
@@ -319,7 +320,8 @@
 
             // Fetch current session from facial recognition API
             try {
-                const response = await fetch(`http://127.0.0.1:5011/api/facial-recognition/sessions/current`);
+                const apiBase = window.location.origin || 'http://localhost:5000';
+                const response = await fetch(`${apiBase}/api/facial-recognition/sessions/current`);
 
                 if (response.ok) {
                     const data = await response.json();
@@ -463,7 +465,8 @@
             }
 
             try {
-                const response = await fetch(`http://127.0.0.1:5011/api/facial-recognition/attendance/today?module_id=${currentClass.moduleId}`);
+                const apiBase = window.location.origin || 'http://localhost:5000';
+                const response = await fetch(`${apiBase}/api/facial-recognition/attendance/today?module_id=${currentClass.moduleId}`);
 
                 if (!response.ok) {
                     console.error('Failed to fetch attendance:', response.status);

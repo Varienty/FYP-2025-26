@@ -128,7 +128,8 @@
         // Load schedule from API
         async function loadSchedule() {
             try {
-                const response = await fetch('http://127.0.0.1:5011/api/facial-recognition/timetable/all');
+                const apiBase = window.location.origin || 'http://localhost:5000';
+                const response = await fetch(`${apiBase}/api/facial-recognition/timetable/all`);
 
                 if (!response.ok) {
                     throw new Error('Failed to load schedule');
