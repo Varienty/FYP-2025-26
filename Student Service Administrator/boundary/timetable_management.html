@@ -329,8 +329,8 @@
     <script src="../../common/config.js"></script>
     <script src="../../common/auth.js"></script>
     <script>
-        // Force use of port 5010 for timetable management (don't use config.js port)
-        const API_BASE = 'http://localhost:5010';
+        // Use dynamic API base from window.location
+        const API_BASE = window.location.origin || 'http://localhost:5000';
 
         let modules = [];
         let lecturers = [];

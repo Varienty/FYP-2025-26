@@ -177,15 +177,406 @@ def ssa_reports():
 # SYSTEM ADMIN ENDPOINTS
 # ============================================================================
 
-@app.route('/api/sysadmin/dashboard', methods=['GET'])
-def sysadmin_dashboard():
-    """Placeholder for system admin dashboard"""
-    return jsonify({'message': 'System admin dashboard'}), 200
+@app.route('/api/policies', methods=['GET'])
+def get_policies():
+    """Get all attendance policies"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM attendance_policies LIMIT 10")
+        policies = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'policies': policies or []}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
-@app.route('/api/sysadmin/users', methods=['GET'])
-def sysadmin_users():
-    """Placeholder for user management"""
-    return jsonify({'message': 'User management endpoint'}), 200
+@app.route('/api/devices/stats', methods=['GET'])
+def get_device_stats():
+    """Get device/hardware statistics"""
+    try:
+        # Return mock data for now as hardware_devices table may not exist
+        return jsonify({
+            'ok': True,
+            'stats': {
+                'online': 3,
+                'offline': 1,
+                'total': 4
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/alerts', methods=['GET'])
+def get_alerts():
+    """Get system alerts"""
+    try:
+        # Return mock data for now
+        return jsonify({
+            'ok': True,
+            'alerts': []
+        }), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    """Get all staff/admin users"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get system admins and SSAs
+        cursor.execute("""
+            SELECT id, first_name, last_name, email, 'system_admin' as role, 1 as isActive 
+            FROM system_admins
+            UNION ALL
+            SELECT id, first_name, last_name, email, 'ssa' as role, 1 as isActive
+            FROM student_service_admins
+            UNION ALL
+            SELECT id, first_name, last_name, email, 'lecturer' as role, 1 as isActive
+            FROM lecturers
+            LIMIT 50
+        """)
+        users = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'users': users or []}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/users', methods=['POST'])
+def create_user():
+    """Create a new user account"""
+    try:
+        data = request.get_json()
+        userRole = data.get('userRole', '')
+        email = data.get('email', '')
+        first_name = data.get('name', '').split()[0] if data.get('name') else ''
+        last_name = data.get('name', '').split()[-1] if data.get('name') else ''
+        password = data.get('password', '')
+        user_id = data.get('userID', '')
+        
+        if not all([userRole, email, password]):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Hash password
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        if userRole == 'Lecturer':
+            cursor.execute(
+                "INSERT INTO lecturers (lecturer_id, email, password, first_name, last_name) VALUES (%s, %s, %s, %s, %s)",
+                (user_id, email, password_hash, first_name, last_name)
+            )
+        elif userRole == 'StudentServiceAdmin':
+            cursor.execute(
+                "INSERT INTO student_service_admins (admin_id, email, password, first_name, last_name) VALUES (%s, %s, %s, %s, %s)",
+                (user_id, email, password_hash, first_name, last_name)
+            )
+        elif userRole == 'SystemAdministrator':
+            cursor.execute(
+                "INSERT INTO system_admins (admin_id, email, password, first_name, last_name) VALUES (%s, %s, %s, %s, %s)",
+                (user_id, email, password_hash, first_name, last_name)
+            )
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'message': 'User created successfully'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ============================================================================
+# STUDENT SERVICE ADMIN ENDPOINTS
+# ============================================================================
+
+@app.route('/api/ssa/modules', methods=['GET'])
+def get_ssa_modules():
+    """Get all modules for SSA"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, code, name FROM modules LIMIT 50")
+        modules = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'modules': modules or []}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/ssa/lecturers', methods=['GET'])
+def get_ssa_lecturers():
+    """Get all lecturers for SSA"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, lecturer_id, email, first_name, last_name FROM lecturers LIMIT 50")
+        lecturers = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'lecturers': lecturers or []}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/ssa/students', methods=['GET'])
+def get_ssa_students():
+    """Get all students for SSA"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, student_id, email, first_name, last_name FROM students LIMIT 100")
+        students = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'students': students or []}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/ssa/modules/<int:module_id>/students', methods=['GET'])
+def get_module_students(module_id):
+    """Get students enrolled in a specific module"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT s.id, s.student_id, s.email, s.first_name, s.last_name
+            FROM students s
+            INNER JOIN module_enrollments me ON s.id = me.student_id
+            WHERE me.module_id = %s
+        """, (module_id,))
+        students = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'students': students or []}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/ssa/modules/<int:module_id>/assign-lecturer', methods=['POST'])
+def assign_lecturer_to_module(module_id):
+    """Assign lecturer to a module"""
+    try:
+        data = request.get_json()
+        lecturer_id = data.get('lecturer_id')
+        
+        if not lecturer_id:
+            return jsonify({'error': 'lecturer_id required'}), 400
+        
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE modules SET lecturer_id = %s WHERE id = %s", (lecturer_id, module_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'message': 'Lecturer assigned'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ssa/modules/<int:module_id>/enroll', methods=['POST'])
+def enroll_students(module_id):
+    """Enroll students in a module"""
+    try:
+        data = request.get_json()
+        student_ids = data.get('student_ids', [])
+        
+        if not student_ids:
+            return jsonify({'error': 'student_ids required'}), 400
+        
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        for student_id in student_ids:
+            try:
+                cursor.execute(
+                    "INSERT INTO module_enrollments (module_id, student_id) VALUES (%s, %s)",
+                    (module_id, student_id)
+                )
+            except:
+                pass  # Skip if already enrolled
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'message': f'{len(student_ids)} students enrolled'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ssa/modules/<int:module_id>/unenroll/<int:student_id>', methods=['POST', 'DELETE'])
+def unenroll_student(module_id, student_id):
+    """Remove student from a module"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM module_enrollments WHERE module_id = %s AND student_id = %s", (module_id, student_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'message': 'Student unenrolled'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ssa/timetable', methods=['GET'])
+def get_timetable():
+    """Get timetable"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM timetable LIMIT 50")
+        timetable = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'timetable': timetable or []}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/ssa/timetable', methods=['POST'])
+def create_timetable_entry():
+    """Create timetable entry"""
+    try:
+        data = request.get_json()
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO timetable (module_id, day, start_time, end_time, room)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (data.get('module_id'), data.get('day'), data.get('start_time'), data.get('end_time'), data.get('room')))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'message': 'Timetable entry created'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ssa/timetable/<int:entry_id>', methods=['DELETE'])
+def delete_timetable_entry(entry_id):
+    """Delete timetable entry"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM timetable WHERE id = %s", (entry_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'message': 'Timetable entry deleted'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/attendance/classes', methods=['GET'])
+def get_attendance_classes():
+    """Get classes for attendance tracking"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, code, name FROM modules LIMIT 50")
+        classes = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'classes': classes or []}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/attendance/daily-summary', methods=['GET'])
+def get_daily_summary():
+    """Get daily attendance summary"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT DATE(attendance_date) as date, COUNT(*) as total_records,
+                   SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present,
+                   SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) as absent
+            FROM attendance
+            WHERE attendance_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            GROUP BY DATE(attendance_date)
+            ORDER BY date DESC
+            LIMIT 30
+        """)
+        summary = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'summary': summary or []}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+# ============================================================================
+# LECTURER ENDPOINTS
+# ============================================================================
+
+@app.route('/api/lecturer/classes', methods=['GET'])
+def get_lecturer_classes():
+    """Get classes assigned to the lecturer"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, code, name FROM modules LIMIT 20")
+        classes = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'classes': classes or []}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/lecturer/attendance', methods=['GET'])
+def get_lecturer_attendance():
+    """Get attendance records for lecturer's classes"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT a.id, s.student_id, s.first_name, s.last_name, 
+                   m.code as class_code, a.status, a.attendance_date
+            FROM attendance a
+            INNER JOIN students s ON a.student_id = s.id
+            INNER JOIN modules m ON a.module_id = m.id
+            WHERE a.attendance_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            ORDER BY a.attendance_date DESC
+            LIMIT 100
+        """)
+        records = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'records': records or []}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/lecturer/reports', methods=['GET'])
+def get_lecturer_reports():
+    """Get attendance reports"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT m.id, m.code, m.name,
+                   COUNT(a.id) as total_attendance_records,
+                   SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END) as present_count
+            FROM modules m
+            LEFT JOIN attendance a ON m.id = a.module_id
+            GROUP BY m.id, m.code, m.name
+            LIMIT 20
+        """)
+        reports = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify({'ok': True, 'reports': reports or []}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/lecturer/notifications', methods=['GET'])
+def get_lecturer_notifications():
+    """Get notifications for lecturer"""
+    try:
+        # Return mock data for now
+        return jsonify({
+            'ok': True,
+            'notifications': [
+                {'id': 1, 'message': 'Your attendance session has ended', 'date': '2026-01-22'},
+                {'id': 2, 'message': 'Weekly attendance report ready', 'date': '2026-01-20'}
+            ]
+        }), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 # ============================================================================
 # ERROR HANDLERS
