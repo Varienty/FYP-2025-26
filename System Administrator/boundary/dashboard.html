@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Administrator Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/config.js"></script>
+    <script src="/static/auth.js"></script>
     <script>
         // Define API_BASE_URL dynamically from window.location
         window.API_BASE_URL = window.location.origin || 'http://localhost:5000';
@@ -234,13 +236,11 @@
     </div>
 
     <!-- Scripts -->
-    <script src="../../common/config.js"></script>
-    <script src="../../common/auth.js"></script>
     <script>
-        // API Base URL
-        const API_BASE_URL = window.API_ENDPOINTS?.['system-admin'] || window.API_BASE || 'http://127.0.0.1:5009';
+        // Ensure API_BASE_URL is set dynamically
+        const API_BASE_URL = window.location.origin || 'http://localhost:5000';
 
-        // Authentication
+        // Authentication check
         requireAuth('system-admin');
 
         // Logout handler
