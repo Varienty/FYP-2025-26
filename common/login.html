@@ -56,11 +56,20 @@
   </div>
 
   <script>
-    // Map role display names -> normalized role codes and dashboard paths
+    // Map role display names -> normalized role codes and dashboard paths (UI selection)
     const roleConfig = {
-      'System Administrator': { code: 'system-admin', path: '../System Administrator/boundary/dashboard.html' },
-      'Student Service Administrator': { code: 'student-service-admin', path: '../Student Service Administrator/boundary/dashboard.html' },
-      'Lecturer': { code: 'lecturer', path: '../Lecturer/boundary/dashboard.html' }
+      'System Administrator': { code: 'system-admin', path: '/System%20Administrator/boundary/dashboard.html' },
+      'Student Service Administrator': { code: 'student-service-admin', path: '/Student%20Service%20Administrator/boundary/dashboard.html' },
+      'Lecturer': { code: 'lecturer', path: '/Lecturer/boundary/dashboard.html' }
+    };
+
+    // Map server role codes -> normalized UI role codes and dashboard paths (authoritative)
+    const serverRoleMap = {
+      'sysadmin': { code: 'system-admin', path: '/System%20Administrator/boundary/dashboard.html' },
+      'ssa': { code: 'student-service-admin', path: '/Student%20Service%20Administrator/boundary/dashboard.html' },
+      'lecturer': { code: 'lecturer', path: '/Lecturer/boundary/dashboard.html' },
+      // No student UI yet; default back to login for now
+      'student': { code: 'student', path: '/common/login.html' }
     };
 
     const form = document.getElementById('loginForm');
@@ -69,14 +78,12 @@
     const credentialLabel = document.getElementById('credentialLabel');
     const credentialInput = document.getElementById('credentialInput');
 
-    function setSessionForUser(identifier, role, serverUserData = null) {
-      const config = roleConfig[role];
-      const normalizedRole = config ? config.code : role;
+    function setSessionForUser(identifier, normalizedRole, serverUserData = null) {
       
       // If we have full server user data, use it; otherwise create basic user object
       let user;
       if (serverUserData) {
-        // Use full user data from server (includes lecturer_id, etc.)
+        // Use full user data from server (includes ids, names), but ensure normalized role
         user = { ...serverUserData, role: normalizedRole, loginTime: new Date().toISOString() };
       } else {
         // Fallback to basic user object
@@ -89,16 +96,12 @@
       try { sessionStorage.setItem('isAuthenticated', 'true'); } catch (e) {}
     }
 
-    async function attemptServerLogin(identifier, password, role) {
+    async function attemptServerLogin(identifier, password) {
       // Get the role code and appropriate API endpoint
-      const roleCode = roleConfig[role]?.code;
-      const isLecturer = roleCode === 'lecturer';
       
       // Use role-specific endpoints if available, otherwise try generic bases
       const bases = [];
-      if (window.API_ENDPOINTS && window.API_ENDPOINTS[roleCode]) {
-        bases.push(window.API_ENDPOINTS[roleCode]);
-      }
+      // In unified backend, all roles share same base
       if (window.API_BASE) {
         bases.push(window.API_BASE);
       }
@@ -152,9 +155,12 @@
         const tryServer = true;
         const res = await window.auth.login(identifier, password, { server: tryServer, role });
         if (res && (res.ok || res.ok === true)) {
-          setSessionForUser(identifier, role);
-          const dashPath = roleConfig[role]?.path || roleConfig['Student Service Administrator'].path;
-          window.location.href = encodeURI(dashPath);
+          // If server returned role, prefer that mapping
+          const srvRole = res.data?.user?.role || res.role;
+          const mapped = srvRole && serverRoleMap[srvRole] ? serverRoleMap[srvRole] : roleConfig[role];
+          const normalizedRole = mapped.code;
+          setSessionForUser(identifier, normalizedRole, res.data?.user || null);
+          window.location.href = mapped.path;
           return;
         }
       }
@@ -171,18 +177,16 @@
       }
 
       // 3) Try calling the server endpoint directly
-      const serverRes = await attemptServerLogin(identifier, password, role);
+      const serverRes = await attemptServerLogin(identifier, password);
       if (serverRes.ok) {
-        // Prefer server user payload if available
-        const normalizedRole = roleConfig[role]?.code;
-        if (normalizedRole === 'lecturer' && serverRes.data?.user) {
-          // Pass full user data from server
-          setSessionForUser(serverRes.data.user.email, role, serverRes.data.user);
-        } else {
-          setSessionForUser(identifier, role);
-        }
-        const dashPath = roleConfig[role]?.path || roleConfig['Student Service Administrator'].path;
-        window.location.href = encodeURI(dashPath);
+        // Prefer server role as source of truth
+        const srvRole = serverRes.data?.user?.role;
+        const mapped = srvRole && serverRoleMap[srvRole] ? serverRoleMap[srvRole] : roleConfig[role];
+        const normalizedRole = mapped.code;
+        const serverUser = serverRes.data?.user || null;
+        const idForSession = serverUser?.email || identifier;
+        setSessionForUser(idForSession, normalizedRole, serverUser);
+        window.location.href = mapped.path;
         return;
       }
 
@@ -191,9 +195,9 @@
       const demoOk = (!isLecturer && identifier === 'admin' && password === 'password') ||
                      (isLecturer && identifier === 'lecturer@university.com' && password === 'password');
       if (demoOk) {
-        setSessionForUser(identifier, role);
-        const dashPath = roleConfig[role]?.path || roleConfig['Student Service Administrator'].path;
-        window.location.href = encodeURI(dashPath);
+        const mapped = roleConfig[role] || roleConfig['Student Service Administrator'];
+        setSessionForUser(identifier, mapped.code);
+        window.location.href = mapped.path;
         return;
       }
 
