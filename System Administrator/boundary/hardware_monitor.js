@@ -2,7 +2,8 @@
 // Monitor hardware devices (cameras, sensors, etc.) - Database Integration ONLY
 
 (function () {
-    const API_BASE = window.API_ENDPOINTS?.['system-admin'] || window.API_BASE || 'http://localhost:5009';
+    // Use the same API base as other pages (from config.js)
+    const API_BASE = window.location.origin;
     let devices = [];
     let pollingInterval = null;
 

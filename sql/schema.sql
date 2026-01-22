@@ -290,6 +290,24 @@ CREATE TABLE IF NOT EXISTS notifications (
   INDEX idx_recipient (recipient_type, recipient_id, is_read)
 );
 
+-- ==========================================
+-- SYSTEM MONITORING TABLES
+-- ==========================================
+
+-- Hardware devices (cameras, sensors, etc.) - User Story #22, #23
+CREATE TABLE IF NOT EXISTS devices (
+  id VARCHAR(50) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  type VARCHAR(50) NOT NULL COMMENT 'camera, sensor, server, etc.',
+  status ENUM('online', 'offline', 'maintenance') DEFAULT 'offline',
+  last_seen TIMESTAMP,
+  latency_ms INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_status (status),
+  INDEX idx_last_seen (last_seen)
+);
+
 -- System alerts (User Story #25)
 CREATE TABLE IF NOT EXISTS system_alerts (
   id INT PRIMARY KEY AUTO_INCREMENT,

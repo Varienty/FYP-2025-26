@@ -208,33 +208,183 @@ def get_policies():
         if conn:
             conn.close()
 
-@app.route('/api/devices/stats', methods=['GET'])
-def get_device_stats():
-    """Get device/hardware statistics"""
+@app.route('/api/devices', methods=['GET'])
+def get_devices():
+    """Get all hardware devices with status from database"""
+    conn = None
     try:
-        # Return mock data for now as hardware_devices table may not exist
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT id, name, type, status, last_seen as lastSeen, latency_ms as latencyMs, 
+                   created_at as createdAt
+            FROM devices
+            ORDER BY name
+        """)
+        devices = cursor.fetchall()
+        cursor.close()
+        
+        # Convert to expected format
+        result = []
+        for d in devices:
+            location = d.get('name', '').split('-')[-1].strip() if '-' in d.get('name', '') else 'Unknown'
+            result.append({
+                'id': d['id'],
+                'name': d['name'],
+                'type': d['type'],
+                'status': d['status'],
+                'location': location,
+                'lastSeen': d['lastSeen'].isoformat() if d['lastSeen'] else None,
+                'latencyMs': d['latencyMs'] or 0
+            })
+        
+        return jsonify({'ok': True, 'devices': result}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@app.route('/api/devices/<device_id>', methods=['PUT'])
+def update_device(device_id):
+    """Update device status in database"""
+    conn = None
+    try:
+        payload = request.get_json() or {}
+        
+        # Build update query
+        updates = []
+        params = []
+        
+        if 'status' in payload:
+            updates.append("status = %s")
+            params.append(payload['status'])
+            if payload['status'] == 'online':
+                updates.append("last_seen = NOW()")
+        if 'name' in payload:
+            updates.append("name = %s")
+            params.append(payload['name'])
+        
+        if not updates:
+            return jsonify({'ok': False, 'error': 'No fields to update'}), 400
+        
+        params.append(device_id)
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(f"UPDATE devices SET {', '.join(updates)} WHERE id = %s", tuple(params))
+        conn.commit()
+        rows = cursor.rowcount
+        
+        if rows == 0:
+            cursor.close()
+            return jsonify({'ok': False, 'error': 'Device not found'}), 404
+        
+        # Return updated device
+        cursor.execute(
+            "SELECT id, name, type, status, last_seen, latency_ms FROM devices WHERE id = %s",
+            (device_id,)
+        )
+        updated = cursor.fetchone()
+        cursor.close()
+        
+        location = updated.get('name', '').split('-')[-1].strip() if '-' in updated.get('name', '') else 'Unknown'
+        
         return jsonify({
             'ok': True,
-            'stats': {
-                'online': 3,
-                'offline': 1,
-                'total': 4
+            'device': {
+                'id': updated['id'],
+                'name': updated['name'],
+                'type': updated['type'],
+                'status': updated['status'],
+                'location': location,
+                'lastSeen': updated['last_seen'].isoformat() if updated['last_seen'] else None,
+                'latencyMs': updated['latency_ms'] or 0
             }
         }), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
-@app.route('/api/alerts', methods=['GET'])
-def get_alerts():
-    """Get system alerts"""
+@app.route('/api/devices/stats', methods=['GET'])
+def get_device_stats():
+    """Get device/hardware statistics"""
+    conn = None
     try:
-        # Return mock data for now
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT 
+               COUNT(*) as total,
+               SUM(CASE WHEN status = 'online' THEN 1 ELSE 0 END) as online,
+               SUM(CASE WHEN status = 'offline' THEN 1 ELSE 0 END) as offline,
+               SUM(CASE WHEN status = 'maintenance' THEN 1 ELSE 0 END) as maintenance
+            FROM devices
+        """)
+        stats = cursor.fetchone()
+        cursor.close()
+        
+        total = stats['total'] or 0
+        online = stats['online'] or 0
+        
         return jsonify({
             'ok': True,
-            'alerts': []
+            'stats': {
+                'total': total,
+                'online': online,
+                'offline': stats['offline'] or 0,
+                'maintenance': stats['maintenance'] or 0,
+                'uptime': round((online / total * 100), 1) if total > 0 else 0
+            }
         }), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@app.route('/api/alerts', methods=['GET'])
+def get_alerts():
+    """Get active system alerts from database"""
+    conn = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT id, alert_type, severity, title, description, device_id, status,
+                   created_at, acknowledged_by, acknowledged_at, resolved_at
+            FROM system_alerts
+            WHERE status IN ('new', 'acknowledged')
+            ORDER BY created_at DESC
+            LIMIT 50
+        """)
+        alerts = cursor.fetchall()
+        cursor.close()
+        
+        result = []
+        for alert in alerts:
+            result.append({
+                'id': alert['id'],
+                'type': alert['alert_type'],
+                'severity': alert['severity'],
+                'title': alert['title'],
+                'description': alert['description'],
+                'deviceId': alert['device_id'],
+                'status': alert['status'],
+                'createdAt': alert['created_at'].isoformat() if alert['created_at'] else None,
+                'acknowledgedBy': alert['acknowledged_by'],
+                'acknowledgedAt': alert['acknowledged_at'].isoformat() if alert['acknowledged_at'] else None,
+                'resolvedAt': alert['resolved_at'].isoformat() if alert['resolved_at'] else None
+            })
+        
+        return jsonify({'ok': True, 'alerts': result}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/users', methods=['GET'])
 def get_users():
