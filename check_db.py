@@ -4,14 +4,20 @@ import mysql.connector
 import os
 
 db_url = os.getenv('DATABASE_URL')
+if not db_url:
+    print("ERROR: DATABASE_URL not set!")
+    exit(1)
+
 from urllib.parse import urlparse
 url = urlparse(db_url)
+
+db_name = url.path.lstrip('/') if isinstance(url.path, str) else url.path.decode().lstrip('/')
 
 conn = mysql.connector.connect(
     host=url.hostname,
     user=url.username,
     password=url.password,
-    database=url.path.lstrip('/')
+    database=db_name
 )
 
 cursor = conn.cursor(dictionary=True)
