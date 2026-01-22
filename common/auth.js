@@ -30,8 +30,10 @@
     };
 
     window.logout = function() {
+        console.log('[AUTH] Logout function called');
         try {
             // Clear session immediately
+            console.log('[AUTH] Clearing session storage...');
             sessionStorage.removeItem('auth_user');
             sessionStorage.removeItem('isAuthenticated');
             localStorage.removeItem('lecturer_active_session');
@@ -39,20 +41,24 @@
             
             // Clear all sessionStorage and localStorage
             sessionStorage.clear();
+            console.log('[AUTH] Session cleared');
             
             // Try to notify server (non-blocking)
             const apiBase = window.location.origin || '';
+            console.log('[AUTH] Notifying server at:', apiBase + '/api/auth/logout');
             fetch(apiBase + '/api/auth/logout', { 
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include'
-            }).catch(() => console.log('Server logout notification failed'));
+            }).then(() => console.log('[AUTH] Server notified'))
+              .catch((err) => console.log('[AUTH] Server logout notification failed:', err));
             
             // Redirect to login page - use relative path or absolute path
             const loginPath = window.location.origin ? window.location.origin + '/' : '/';
+            console.log('[AUTH] Redirecting to:', loginPath);
             window.location.replace(loginPath);
         } catch (e) {
-            console.error('Logout error:', e);
+            console.error('[AUTH] Logout error:', e);
             // Still try to redirect even if error
             window.location.replace(window.location.origin ? window.location.origin + '/' : '/');
         }

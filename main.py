@@ -59,6 +59,14 @@ def index():
             'note': 'login.html not found'
         }), 200
 
+@app.route('/debug', methods=['GET'])
+def debug_page():
+    """Serve debug test page"""
+    try:
+        return send_from_directory('.', 'debug_test.html')
+    except FileNotFoundError:
+        return jsonify({'error': 'Debug page not found'}), 404
+
 # Serve static files (CSS, JS, images, etc.)
 @app.route('/static/<path:filename>', methods=['GET'])
 def serve_static(filename):

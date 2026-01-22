@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Test Page</title>
+    <script src="common/config.js"></script>
+    <script src="common/auth.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .test-section { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        button { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #45a049; }
+        #logoutBtn { background: #f44336; }
+        #logoutBtn:hover { background: #da190b; }
+        .code { background: #f4f4f4; padding: 10px; border-left: 3px solid #4CAF50; margin: 10px 0; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>FYP Attendance System - Debug Test Page</h1>
+    
+    <div class="test-section">
+        <h2>1. Configuration Test</h2>
+        <div id="configTest"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Auth.js Functions Test</h2>
+        <div id="authTest"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Session Storage Test</h2>
+        <div id="sessionTest"></div>
+        <button onclick="testLogin()">Simulate Login</button>
+        <button onclick="clearSession()">Clear Session</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Logout Button Test</h2>
+        <button id="logoutBtn">Test Logout</button>
+        <button data-action="logout">Test Logout (data-action)</button>
+        <div id="logoutTest" style="margin-top: 10px;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. API Endpoint Test</h2>
+        <button onclick="testHealthEndpoint()">Test /health/db</button>
+        <button onclick="testLoginEndpoint()">Test /api/auth/login</button>
+        <button onclick="testLogoutEndpoint()">Test /api/auth/logout</button>
+        <div id="apiTest" style="margin-top: 10px;"></div>
+    </div>
+
+    <script>
+        // Test 1: Configuration
+        function testConfig() {
+            const output = document.getElementById('configTest');
+            let html = '<div class="code">';
+            html += `window.location.origin: ${window.location.origin}<br>`;
+            html += `window.location.hostname: ${window.location.hostname}<br>`;
+            html += `window.location.protocol: ${window.location.protocol}<br>`;
+            html += `window.API_BASE: ${window.API_BASE}<br>`;
+            html += `window.API_ENDPOINTS: ${JSON.stringify(window.API_ENDPOINTS, null, 2)}<br>`;
+            html += '</div>';
+            
+            if (window.API_BASE && window.API_BASE !== 'http://localhost:5000') {
+                html += '<p class="success">✓ Config loaded correctly for production</p>';
+            } else if (window.location.hostname === 'localhost') {
+                html += '<p class="success">✓ Config loaded correctly for localhost</p>';
+            } else {
+                html += '<p class="error">✗ Config might be using localhost fallback on production!</p>';
+            }
+            
+            output.innerHTML = html;
+        }
+        
+        // Test 2: Auth functions
+        function testAuth() {
+            const output = document.getElementById('authTest');
+            let html = '';
+            
+            if (typeof window.logout === 'function') {
+                html += '<p class="success">✓ logout() function is available</p>';
+            } else {
+                html += '<p class="error">✗ logout() function NOT found</p>';
+            }
+            
+            if (typeof window.getCurrentUser === 'function') {
+                html += '<p class="success">✓ getCurrentUser() function is available</p>';
+            } else {
+                html += '<p class="error">✗ getCurrentUser() function NOT found</p>';
+            }
+            
+            if (typeof window.requireAuth === 'function') {
+                html += '<p class="success">✓ requireAuth() function is available</p>';
+            } else {
+                html += '<p class="error">✗ requireAuth() function NOT found</p>';
+            }
+            
+            output.innerHTML = html;
+        }
+        
+        // Test 3: Session storage
+        function testSession() {
+            const output = document.getElementById('sessionTest');
+            const authUser = sessionStorage.getItem('auth_user');
+            const isAuth = sessionStorage.getItem('isAuthenticated');
+            
+            let html = '<div class="code">';
+            html += `isAuthenticated: ${isAuth}<br>`;
+            html += `auth_user: ${authUser || 'null'}<br>`;
+            html += '</div>';
+            
+            if (isAuth === 'true' && authUser) {
+                html += '<p class="success">✓ User is logged in</p>';
+                try {
+                    const user = JSON.parse(authUser);
+                    html += `<p>Role: ${user.role}, Email: ${user.email || user.username}</p>`;
+                } catch (e) {
+                    html += '<p class="error">✗ Could not parse user data</p>';
+                }
+            } else {
+                html += '<p class="error">✗ No active session</p>';
+            }
+            
+            output.innerHTML = html;
+        }
+        
+        function testLogin() {
+            sessionStorage.setItem('isAuthenticated', 'true');
+            sessionStorage.setItem('auth_user', JSON.stringify({
+                email: 'test@example.com',
+                role: 'system-admin',
+                first_name: 'Test',
+                last_name: 'User'
+            }));
+            testSession();
+            document.getElementById('logoutTest').innerHTML = '<p class="success">Session created! Now try the logout buttons.</p>';
+        }
+        
+        function clearSession() {
+            sessionStorage.clear();
+            testSession();
+            document.getElementById('logoutTest').innerHTML = '<p>Session cleared manually.</p>';
+        }
+        
+        // Test 4: Logout button
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            document.getElementById('logoutTest').innerHTML = '<p>Logout button clicked! Checking if logout() function executes...</p>';
+            try {
+                logout();
+                document.getElementById('logoutTest').innerHTML += '<p class="success">✓ logout() executed</p>';
+            } catch (e) {
+                document.getElementById('logoutTest').innerHTML += `<p class="error">✗ Error: ${e.message}</p>`;
+            }
+        });
+        
+        // Test 5: API endpoints
+        async function testHealthEndpoint() {
+            const output = document.getElementById('apiTest');
+            output.innerHTML = '<p>Testing /health/db...</p>';
+            try {
+                const url = `${window.location.origin}/health/db`;
+                const response = await fetch(url);
+                const data = await response.json();
+                output.innerHTML = `<p class="success">✓ Health endpoint works!</p><div class="code">${JSON.stringify(data, null, 2)}</div>`;
+            } catch (e) {
+                output.innerHTML = `<p class="error">✗ Error: ${e.message}</p>`;
+            }
+        }
+        
+        async function testLoginEndpoint() {
+            const output = document.getElementById('apiTest');
+            output.innerHTML = '<p>Testing /api/auth/login...</p>';
+            try {
+                const url = `${window.location.origin}/api/auth/login`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'admin@attendance.com', password: 'password' })
+                });
+                const data = await response.json();
+                output.innerHTML = `<p class="success">✓ Login endpoint works!</p><div class="code">${JSON.stringify(data, null, 2)}</div>`;
+            } catch (e) {
+                output.innerHTML = `<p class="error">✗ Error: ${e.message}</p>`;
+            }
+        }
+        
+        async function testLogoutEndpoint() {
+            const output = document.getElementById('apiTest');
+            output.innerHTML = '<p>Testing /api/auth/logout...</p>';
+            try {
+                const url = `${window.location.origin}/api/auth/logout`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                output.innerHTML = `<p class="success">✓ Logout endpoint works!</p><div class="code">${JSON.stringify(data, null, 2)}</div>`;
+            } catch (e) {
+                output.innerHTML = `<p class="error">✗ Error: ${e.message}</p>`;
+            }
+        }
+        
+        // Run tests on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            testConfig();
+            testAuth();
+            testSession();
+        });
+    </script>
+</body>
+</html>
