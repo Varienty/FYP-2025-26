@@ -323,7 +323,7 @@ def get_ssa_modules():
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, class_code as code, class_name as name FROM classes LIMIT 50")
+        cursor.execute("SELECT id, code, name FROM modules LIMIT 50")
         modules = cursor.fetchall()
         cursor.close()
         return jsonify({'ok': True, 'modules': modules or []}), 200
@@ -366,7 +366,7 @@ def get_ssa_students():
 
 @app.route('/api/ssa/modules/<int:module_id>/students', methods=['GET'])
 def get_module_students(module_id):
-    """Get students enrolled in a specific class/module"""
+    """Get students enrolled in a specific module"""
     conn = None
     try:
         conn = get_connection()
@@ -374,8 +374,8 @@ def get_module_students(module_id):
         cursor.execute("""
             SELECT s.id, s.student_id, s.email, s.first_name, s.last_name
             FROM students s
-            INNER JOIN student_enrollments se ON s.id = se.student_id
-            WHERE se.class_id = %s
+            INNER JOIN module_enrollments me ON s.id = me.student_id
+            WHERE me.module_id = %s
         """, (module_id,))
         students = cursor.fetchall()
         cursor.close()
@@ -388,7 +388,7 @@ def get_module_students(module_id):
 
 @app.route('/api/ssa/modules/<int:module_id>/assign-lecturer', methods=['POST'])
 def assign_lecturer_to_module(module_id):
-    """Assign lecturer to a class/module"""
+    """Assign lecturer to a module"""
     conn = None
     try:
         data = request.get_json()
@@ -399,7 +399,7 @@ def assign_lecturer_to_module(module_id):
         
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("UPDATE classes SET lecturer_id = %s WHERE id = %s", (lecturer_id, module_id))
+        cursor.execute("UPDATE modules SET lecturer_id = %s WHERE id = %s", (lecturer_id, module_id))
         conn.commit()
         cursor.close()
         return jsonify({'ok': True, 'message': 'Lecturer assigned'}), 200
@@ -411,7 +411,7 @@ def assign_lecturer_to_module(module_id):
 
 @app.route('/api/ssa/modules/<int:module_id>/enroll', methods=['POST'])
 def enroll_students(module_id):
-    """Enroll students in a class/module"""
+    """Enroll students in a module"""
     conn = None
     try:
         data = request.get_json()
@@ -426,8 +426,8 @@ def enroll_students(module_id):
         for student_id in student_ids:
             try:
                 cursor.execute(
-                    "INSERT INTO student_enrollments (student_id, class_id) VALUES (%s, %s)",
-                    (student_id, module_id)
+                    "INSERT INTO module_enrollments (module_id, student_id) VALUES (%s, %s)",
+                    (module_id, student_id)
                 )
             except:
                 pass  # Skip if already enrolled
@@ -443,12 +443,12 @@ def enroll_students(module_id):
 
 @app.route('/api/ssa/modules/<int:module_id>/unenroll/<int:student_id>', methods=['POST', 'DELETE'])
 def unenroll_student(module_id, student_id):
-    """Remove student from a class/module"""
+    """Remove student from a module"""
     conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM student_enrollments WHERE class_id = %s AND student_id = %s", (module_id, student_id))
+        cursor.execute("DELETE FROM module_enrollments WHERE module_id = %s AND student_id = %s", (module_id, student_id))
         conn.commit()
         cursor.close()
         return jsonify({'ok': True, 'message': 'Student unenrolled'}), 200
@@ -465,14 +465,7 @@ def get_timetable():
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT t.id, c.id as class_id, c.class_code, c.class_name, 
-                   t.day_of_week, TIME_FORMAT(t.start_time, '%H:%i') as start_time, 
-                   TIME_FORMAT(t.end_time, '%H:%i') as end_time, t.room
-            FROM timetable t
-            INNER JOIN classes c ON t.class_id = c.id
-            LIMIT 50
-        """)
+        cursor.execute("SELECT * FROM timetable LIMIT 50")
         timetable = cursor.fetchall()
         cursor.close()
         return jsonify({'ok': True, 'timetable': timetable or []}), 200
@@ -491,9 +484,9 @@ def create_timetable_entry():
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO timetable (class_id, day_of_week, start_time, end_time, room)
+            INSERT INTO timetable (module_id, day, start_time, end_time, room)
             VALUES (%s, %s, %s, %s, %s)
-        """, (data.get('class_id'), data.get('day_of_week'), data.get('start_time'), data.get('end_time'), data.get('room')))
+        """, (data.get('module_id'), data.get('day'), data.get('start_time'), data.get('end_time'), data.get('room')))
         conn.commit()
         cursor.close()
         return jsonify({'ok': True, 'message': 'Timetable entry created'}), 201
@@ -527,7 +520,7 @@ def get_attendance_classes():
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, class_code as code, class_name as name FROM classes LIMIT 50")
+        cursor.execute("SELECT id, code, name FROM modules LIMIT 50")
         classes = cursor.fetchall()
         cursor.close()
         return jsonify({'ok': True, 'classes': classes or []}), 200
@@ -545,13 +538,12 @@ def get_daily_summary():
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT DATE(check_in_time) as date, COUNT(*) as total_records,
-                   SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
-                   SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late,
-                   SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent
+            SELECT DATE(attendance_date) as date, COUNT(*) as total_records,
+                   SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present,
+                   SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) as absent
             FROM attendance
-            WHERE check_in_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-            GROUP BY DATE(check_in_time)
+            WHERE attendance_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            GROUP BY DATE(attendance_date)
             ORDER BY date DESC
             LIMIT 30
         """)
@@ -575,7 +567,7 @@ def get_lecturer_classes():
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, class_code as code, class_name as name FROM classes LIMIT 20")
+        cursor.execute("SELECT id, code, name FROM modules LIMIT 20")
         classes = cursor.fetchall()
         cursor.close()
         return jsonify({'ok': True, 'classes': classes or []}), 200
@@ -594,12 +586,12 @@ def get_lecturer_attendance():
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
             SELECT a.id, s.student_id, s.first_name, s.last_name, 
-                   c.class_code as class_code, a.status, DATE(a.check_in_time) as attendance_date
+                   m.code as class_code, a.status, a.attendance_date
             FROM attendance a
             INNER JOIN students s ON a.student_id = s.id
-            INNER JOIN classes c ON a.class_id = c.id
-            WHERE a.check_in_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-            ORDER BY a.check_in_time DESC
+            INNER JOIN modules m ON a.module_id = m.id
+            WHERE a.attendance_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            ORDER BY a.attendance_date DESC
             LIMIT 100
         """)
         records = cursor.fetchall()
@@ -619,12 +611,12 @@ def get_lecturer_reports():
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT c.id, c.class_code as code, c.class_name as name,
+            SELECT m.id, m.code, m.name,
                    COUNT(a.id) as total_attendance_records,
-                   SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as present_count
-            FROM classes c
-            LEFT JOIN attendance a ON c.id = a.class_id
-            GROUP BY c.id, c.class_code, c.class_name
+                   SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END) as present_count
+            FROM modules m
+            LEFT JOIN attendance a ON m.id = a.module_id
+            GROUP BY m.id, m.code, m.name
             LIMIT 20
         """)
         reports = cursor.fetchall()
@@ -660,22 +652,22 @@ def get_lecturer_dashboard_stats():
         cursor = conn.cursor(dictionary=True)
         
         # Get total classes
-        cursor.execute("SELECT COUNT(*) as total FROM classes")
+        cursor.execute("SELECT COUNT(*) as total FROM modules")
         total_classes = cursor.fetchone()['total'] or 0
         
-        # Get today's classes from timetable
+        # Get today's classes
         cursor.execute("""
             SELECT COUNT(*) as total FROM timetable 
-            WHERE day_of_week = DAYNAME(NOW())
+            WHERE DAYNAME(NOW()) LIKE day
         """)
         today_classes = cursor.fetchone()['total'] or 0
         
         # Get average attendance
         cursor.execute("""
             SELECT 
-                ROUND(SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) as avg
+                ROUND(SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) as avg
             FROM attendance
-            WHERE check_in_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            WHERE attendance_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
         """)
         result = cursor.fetchone()
         avg_attendance = result['avg'] or 0 if result and result['avg'] else 0
