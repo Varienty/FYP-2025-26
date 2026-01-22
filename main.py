@@ -73,6 +73,12 @@ def serve_static(filename):
     """Serve static files from common folder"""
     return send_from_directory('common', filename)
 
+# Serve common files at /common/ path (for scripts loaded by HTML pages)
+@app.route('/common/<path:filename>', methods=['GET'])
+def serve_common(filename):
+    """Serve common files from common folder"""
+    return send_from_directory('common', filename)
+
 # ============================================================================
 # AUTHENTICATION ENDPOINTS
 # ============================================================================
