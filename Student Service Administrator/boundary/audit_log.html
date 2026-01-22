@@ -174,7 +174,8 @@
         // Load modules for filter
         async function loadModules() {
             try {
-                const response = await fetch('http://localhost:5008/api/attendance/classes');
+                const apiBase = window.location.origin || 'http://localhost:5000';
+                const response = await fetch(`${apiBase}/api/attendance/classes`);
                 const data = await response.json();
                 if (data.ok && data.classes) {
                     const select = document.getElementById('moduleFilter');
@@ -229,7 +230,8 @@
                 if (student) params.append('studentId', student);
 
                 // Fetch from API
-                const response = await fetch(`http://localhost:5008/api/attendance/audit-log?${params}`);
+                const apiBase = window.location.origin || 'http://localhost:5000';
+                const response = await fetch(`${apiBase}/api/attendance/audit-log?${params}`);
                 const data = await response.json();
 
                 if (data.ok && data.records) {

@@ -133,7 +133,7 @@
 
             // 3. BOUNDARY: Send the data to the server-side Controller via an API call
             // NOTE: The URL '/api/users' must match the backend controller's endpoint.
-            const apiBase = window.API_ENDPOINTS?.['system-admin'] || 'http://localhost:5009';
+            const apiBase = window.location.origin || 'http://localhost:5000';
             fetch(apiBase + '/api/users', {
                 method: 'POST',
                 headers: {
