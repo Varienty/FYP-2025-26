@@ -1,24 +1,11 @@
 #!/usr/bin/env python3
 """Check what's in the database"""
-import mysql.connector
-import os
+import sys
+sys.path.insert(0, '/var/app/current')
 
-db_url = os.getenv('DATABASE_URL')
-if not db_url:
-    print("ERROR: DATABASE_URL not set!")
-    exit(1)
+from common.db_utils import get_connection
 
-from urllib.parse import urlparse
-url = urlparse(db_url)
-
-db_name = url.path.lstrip('/') if isinstance(url.path, str) else url.path.decode().lstrip('/')
-
-conn = mysql.connector.connect(
-    host=url.hostname,
-    user=url.username,
-    password=url.password,
-    database=db_name
-)
+conn = get_connection()
 
 cursor = conn.cursor(dictionary=True)
 
