@@ -2,8 +2,8 @@
 // Attendance Policy Manager - Database Integration ONLY
 
 (function () {
-    const API_BASE = window.API_ENDPOINTS?.['system-admin'] || window.API_BASE || 'http://localhost:5009';
-    const SSA_API_BASE = window.API_ENDPOINTS?.['student-service-admin'] || 'http://localhost:5008';
+    const API_BASE = window.location.origin;
+    const SSA_API_BASE = window.location.origin;
     let policies = [];
     let modules = [];
     let editingId = null;

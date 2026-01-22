@@ -2,7 +2,7 @@
 // Manage staff accounts and roles using database API
 
 (function(){
-    const API_BASE = window.API_ENDPOINTS?.['system-admin'] || window.API_BASE || 'http://localhost:5009';
+    const API_BASE = window.location.origin;
     const ROLES = ['system-admin','student-service-admin','lecturer'];
     const ROLE_LABELS = {
         'system-admin': 'System Administrator',
