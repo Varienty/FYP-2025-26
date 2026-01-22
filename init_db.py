@@ -4,6 +4,24 @@ import mysql.connector
 
 password = input("Enter RDS password: ")
 
+# First connect without specifying database
+conn = mysql.connector.connect(
+    host='studentattendance.cxyigemqkv6k.ap-southeast-1.rds.amazonaws.com',
+    user='admin',
+    password=password
+)
+
+cursor = conn.cursor()
+print("Connected to RDS! Creating database...")
+
+# Create database if it doesn't exist
+cursor.execute("CREATE DATABASE IF NOT EXISTS student_attendance")
+print("✓ Database created!")
+
+cursor.close()
+conn.close()
+
+# Now reconnect to the specific database
 conn = mysql.connector.connect(
     host='studentattendance.cxyigemqkv6k.ap-southeast-1.rds.amazonaws.com',
     user='admin',
@@ -12,7 +30,7 @@ conn = mysql.connector.connect(
 )
 
 cursor = conn.cursor()
-print("Connected! Creating tables...")
+print("Creating tables...")
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS students (
