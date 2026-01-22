@@ -245,9 +245,18 @@ UOW Student Attendance System
 if __name__ == '__main__':
     email_service = EmailService()
 
-    # Generate reset code and link
+    # Generate reset code and link - use environment-aware URL
     reset_code = email_service.generate_reset_code()
-    reset_link = f"http://localhost/Student/reset-password.html?token=1e736d6a"
+    
+    # Dynamically build reset link based on deployment environment
+    protocol = os.getenv('URL_PROTOCOL', 'https')
+    domain = os.getenv('DOMAIN_NAME', 'localhost')
+    port = os.getenv('PORT', '5000')
+    
+    if domain == 'localhost':
+        reset_link = f"http://{domain}:{port}/reset_password.html?token={reset_code}"
+    else:
+        reset_link = f"{protocol}://{domain}/reset_password.html?token={reset_code}"
 
     # Send email
     result = email_service.send_password_reset_email(

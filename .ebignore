@@ -49,6 +49,25 @@ package-lock.json
 .elasticbeanstalk/
 *.zip
 
+# Legacy controller files (not used in unified EB backend)
+# Using main.py instead of multiple micro-services
+Lecturer/controller/lecturer_*.py
+Student\ Service\ Administrator/controller/ssa_main.py
+Student\ Service\ Administrator/controller/timetable_controller.py
+System\ Administrator/controller/sysadmin_main.py
+System\ Administrator/controller/facial_recognition_controller.py
+System\ Administrator/controller/download_models.py
+System\ Administrator/controller/anti_spoofing.py
+System\ Administrator/controller/setup_*.sh
+System\ Administrator/controller/setup_*.bat
+
+# Keep only what's needed for the unified backend
+# - common/ (utility modules and HTML pages)
+# - main.py (unified Flask backend)
+# - wsgi.py (EB WSGI entry point)
+# - Procfile (EB process configuration)
+# - requirements.txt (Python dependencies)
+
 # Documentation
 *.md
 docs/

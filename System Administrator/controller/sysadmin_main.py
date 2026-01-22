@@ -1,5 +1,6 @@
 """
 System Administrator - Main Application
+Note: This file is legacy. The unified backend is now in main.py running on AWS EB
 Runs all System Admin controllers on a single port (5009)
 """
 
@@ -21,7 +22,13 @@ app = Flask(__name__)
 CORS(app, origins="*", supports_credentials=False)
 
 # Camera monitoring configuration
-FACIAL_RECOGNITION_URL = 'http://127.0.0.1:5011'
+# Support both development (localhost) and AWS deployment
+if os.getenv('ENVIRONMENT') == 'development':
+    FACIAL_RECOGNITION_URL = 'http://127.0.0.1:5011'
+else:
+    # In production on EB, services are accessed via environment variables
+    FACIAL_RECOGNITION_URL = os.getenv('FACIAL_RECOGNITION_SERVICE_URL', 'http://127.0.0.1:5011')
+
 CAMERA_DEVICE_ID = 'facial-recognition-camera'
 CAMERA_DEVICE_NAME = 'Facial Recognition Camera'
 camera_monitor_thread = None
@@ -259,8 +266,15 @@ def forgot_password():
     email_service = EmailService()
     reset_code = email_service.generate_reset_code(8)
 
-    # Create reset link (pointing to a reset password page)
-    reset_link = f"http://localhost/FYP-Team-15/common/reset_password.html?token={reset_code}&email={email}&role={role}"
+    # Create reset link - dynamically build based on deployment environment
+    protocol = os.getenv('URL_PROTOCOL', 'https')
+    domain = os.getenv('DOMAIN_NAME', 'localhost')
+    port = os.getenv('PORT', '5000')
+    
+    if domain == 'localhost':
+        reset_link = f"http://{domain}:{port}/reset_password.html?token={reset_code}&email={email}&role={role}"
+    else:
+        reset_link = f"{protocol}://{domain}/reset_password.html?token={reset_code}&email={email}&role={role}"
 
     # Calculate expiry (5 minutes from now)
     from datetime import datetime, timedelta
