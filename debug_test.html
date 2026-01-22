@@ -53,6 +53,31 @@
         <div id="apiTest" style="margin-top: 10px;"></div>
     </div>
 
+    <div class="test-section">
+        <h2>6. Database Data Loading Test</h2>
+        <p><strong>System Admin Endpoints:</strong></p>
+        <button onclick="testPolicies()">Test /api/policies (Policies)</button>
+        <button onclick="testUsers()">Test /api/users (Users)</button>
+        
+        <p style="margin-top: 15px;"><strong>Student Service Admin Endpoints:</strong></p>
+        <button onclick="testModules()">Test /api/ssa/modules (Modules)</button>
+        <button onclick="testLecturers()">Test /api/ssa/lecturers (Lecturers)</button>
+        <button onclick="testStudents()">Test /api/ssa/students (Students)</button>
+        <button onclick="testTimetable()">Test /api/ssa/timetable (Timetable)</button>
+        
+        <p style="margin-top: 15px;"><strong>Attendance & Summary Endpoints:</strong></p>
+        <button onclick="testClasses()">Test /api/attendance/classes (Classes)</button>
+        <button onclick="testDailySummary()">Test /api/attendance/daily-summary (Daily Summary)</button>
+        
+        <p style="margin-top: 15px;"><strong>Lecturer Endpoints:</strong></p>
+        <button onclick="testLecturerClasses()">Test /api/lecturer/classes</button>
+        <button onclick="testLecturerAttendance()">Test /api/lecturer/attendance</button>
+        <button onclick="testLecturerReports()">Test /api/lecturer/reports</button>
+        <button onclick="testLecturerStats()">Test /api/lecturer/dashboard/stats</button>
+        
+        <div id="dbTest" style="margin-top: 10px;"></div>
+    </div>
+
     <script>
         // Test 1: Configuration
         function testConfig() {
@@ -203,6 +228,60 @@
                 output.innerHTML = `<p class="error">✗ Error: ${e.message}</p>`;
             }
         }
+        
+        // Database data loading tests
+        async function testEndpoint(endpoint, buttonName, outputElementId = 'dbTest') {
+            const output = document.getElementById(outputElementId);
+            const currentHtml = output.innerHTML;
+            output.innerHTML += `<p><strong>Testing ${endpoint}...</strong></p>`;
+            try {
+                const url = `${window.location.origin}${endpoint}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.status === 200 && (data.ok !== false || data.success !== false)) {
+                    // Count records
+                    let recordCount = 0;
+                    if (data.policies) recordCount = data.policies.length;
+                    else if (data.users) recordCount = data.users.length;
+                    else if (data.modules) recordCount = data.modules.length;
+                    else if (data.lecturers) recordCount = data.lecturers.length;
+                    else if (data.students) recordCount = data.students.length;
+                    else if (data.timetable) recordCount = data.timetable.length;
+                    else if (data.classes) recordCount = data.classes.length;
+                    else if (data.summary) recordCount = data.summary.length;
+                    else if (data.records) recordCount = data.records.length;
+                    else if (data.reports) recordCount = data.reports.length;
+                    else if (data.stats) recordCount = 1;
+                    
+                    output.innerHTML += `<p class="success">✓ ${buttonName} - ${recordCount} records returned</p>`;
+                } else {
+                    output.innerHTML += `<p class="error">✗ ${buttonName} - Error: ${data.error || 'Unknown error'}</p>`;
+                }
+            } catch (e) {
+                output.innerHTML += `<p class="error">✗ ${buttonName} - Error: ${e.message}</p>`;
+            }
+        }
+        
+        // System Admin endpoints
+        function testPolicies() { testEndpoint('/api/policies', 'Policies'); }
+        function testUsers() { testEndpoint('/api/users', 'Users'); }
+        
+        // Student Service Admin endpoints
+        function testModules() { testEndpoint('/api/ssa/modules', 'Modules'); }
+        function testLecturers() { testEndpoint('/api/ssa/lecturers', 'Lecturers'); }
+        function testStudents() { testEndpoint('/api/ssa/students', 'Students'); }
+        function testTimetable() { testEndpoint('/api/ssa/timetable', 'Timetable'); }
+        
+        // Attendance endpoints
+        function testClasses() { testEndpoint('/api/attendance/classes', 'Classes'); }
+        function testDailySummary() { testEndpoint('/api/attendance/daily-summary', 'Daily Summary'); }
+        
+        // Lecturer endpoints
+        function testLecturerClasses() { testEndpoint('/api/lecturer/classes', 'Lecturer Classes'); }
+        function testLecturerAttendance() { testEndpoint('/api/lecturer/attendance', 'Lecturer Attendance'); }
+        function testLecturerReports() { testEndpoint('/api/lecturer/reports', 'Lecturer Reports'); }
+        function testLecturerStats() { testEndpoint('/api/lecturer/dashboard/stats', 'Lecturer Dashboard Stats'); }
         
         // Run tests on page load
         window.addEventListener('DOMContentLoaded', function() {
