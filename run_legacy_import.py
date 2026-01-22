@@ -11,7 +11,7 @@ import mysql.connector
 RDS_HOST = os.getenv('RDS_HOSTNAME', 'studentattendance.cxyigemqkv6k.ap-southeast-1.rds.amazonaws.com')
 RDS_USER = os.getenv('RDS_USERNAME', 'admin')
 RDS_PASS = os.getenv('RDS_PASSWORD', 'iamtrying')
-RDS_DB = os.getenv('RDS_DB_NAME', 'student_attendance')
+RDS_DB = os.getenv('RDS_DB_NAME', 'studentattendance')
 
 print("Connecting to RDS...")
 conn = mysql.connector.connect(host=RDS_HOST, user=RDS_USER, password=RDS_PASS, database=RDS_DB)
