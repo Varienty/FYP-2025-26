@@ -206,6 +206,8 @@ def server_error(error):
 # System Administrator pages (use literal spaces; Flask matches URL-encoded '%20' too)
 @app.route('/System Administrator/boundary/<path:filename>', methods=['GET'])
 @app.route('/System Administrator/boundary', methods=['GET'], defaults={'filename': 'dashboard.html'})
+# Also support links without '/boundary' prefix
+@app.route('/System Administrator/<path:filename>', methods=['GET'])
 def serve_sysadmin_page(filename='dashboard.html'):
     """Serve System Admin pages"""
     try:
@@ -216,6 +218,8 @@ def serve_sysadmin_page(filename='dashboard.html'):
 # Student Service Administrator pages (literal spaces)
 @app.route('/Student Service Administrator/boundary/<path:filename>', methods=['GET'])
 @app.route('/Student Service Administrator/boundary', methods=['GET'], defaults={'filename': 'dashboard.html'})
+# Also support links without '/boundary' prefix
+@app.route('/Student Service Administrator/<path:filename>', methods=['GET'])
 def serve_ssa_page(filename='dashboard.html'):
     """Serve SSA pages"""
     try:
@@ -226,6 +230,8 @@ def serve_ssa_page(filename='dashboard.html'):
 # Lecturer pages
 @app.route('/Lecturer/boundary/<path:filename>', methods=['GET'])
 @app.route('/Lecturer/boundary', methods=['GET'], defaults={'filename': 'dashboard.html'})
+# Also support links without '/boundary' prefix
+@app.route('/Lecturer/<path:filename>', methods=['GET'])
 def serve_lecturer_page(filename='dashboard.html'):
     """Serve Lecturer pages"""
     try:
