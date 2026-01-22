@@ -54,8 +54,9 @@ def _get_pool() -> pooling.MySQLConnectionPool:
     if _pool is None:
         _pool = pooling.MySQLConnectionPool(
             pool_name="app_pool",
-            pool_size=int(os.getenv('DB_POOL_SIZE', '5')),
+            pool_size=int(os.getenv('DB_POOL_SIZE', '15')),
             pool_reset_session=True,
+            autocommit=True,
             **DB_CONFIG,
         )
     return _pool

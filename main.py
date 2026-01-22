@@ -194,16 +194,19 @@ def ssa_reports():
 @app.route('/api/policies', methods=['GET'])
 def get_policies():
     """Get all attendance policies"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM attendance_policies LIMIT 10")
+        cursor.execute("SELECT * FROM attendance_policies ORDER BY id LIMIT 100")
         policies = cursor.fetchall()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'policies': policies or []}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/devices/stats', methods=['GET'])
 def get_device_stats():
@@ -236,6 +239,7 @@ def get_alerts():
 @app.route('/api/users', methods=['GET'])
 def get_users():
     """Get all staff/admin users"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
@@ -254,14 +258,17 @@ def get_users():
         """)
         users = cursor.fetchall()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'users': users or []}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/users', methods=['POST'])
 def create_user():
     """Create a new user account"""
+    conn = None
     try:
         data = request.get_json()
         userRole = data.get('userRole', '')
@@ -298,10 +305,12 @@ def create_user():
         
         conn.commit()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'message': 'User created successfully'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 # ============================================================================
 # STUDENT SERVICE ADMIN ENDPOINTS
@@ -310,41 +319,47 @@ def create_user():
 @app.route('/api/ssa/modules', methods=['GET'])
 def get_ssa_modules():
     """Get all modules for SSA"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT id, code, name FROM modules LIMIT 50")
         modules = cursor.fetchall()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'modules': modules or []}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/ssa/lecturers', methods=['GET'])
 def get_ssa_lecturers():
     """Get all lecturers for SSA"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT id, lecturer_id, email, first_name, last_name FROM lecturers LIMIT 50")
         lecturers = cursor.fetchall()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'lecturers': lecturers or []}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/ssa/students', methods=['GET'])
 def get_ssa_students():
     """Get all students for SSA"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT id, student_id, email, first_name, last_name FROM students LIMIT 100")
         students = cursor.fetchall()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'students': students or []}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
@@ -352,6 +367,7 @@ def get_ssa_students():
 @app.route('/api/ssa/modules/<int:module_id>/students', methods=['GET'])
 def get_module_students(module_id):
     """Get students enrolled in a specific module"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
@@ -363,14 +379,17 @@ def get_module_students(module_id):
         """, (module_id,))
         students = cursor.fetchall()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'students': students or []}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/ssa/modules/<int:module_id>/assign-lecturer', methods=['POST'])
 def assign_lecturer_to_module(module_id):
     """Assign lecturer to a module"""
+    conn = None
     try:
         data = request.get_json()
         lecturer_id = data.get('lecturer_id')
@@ -383,14 +402,17 @@ def assign_lecturer_to_module(module_id):
         cursor.execute("UPDATE modules SET lecturer_id = %s WHERE id = %s", (lecturer_id, module_id))
         conn.commit()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'message': 'Lecturer assigned'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/ssa/modules/<int:module_id>/enroll', methods=['POST'])
 def enroll_students(module_id):
     """Enroll students in a module"""
+    conn = None
     try:
         data = request.get_json()
         student_ids = data.get('student_ids', [])
@@ -412,42 +434,51 @@ def enroll_students(module_id):
         
         conn.commit()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'message': f'{len(student_ids)} students enrolled'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/ssa/modules/<int:module_id>/unenroll/<int:student_id>', methods=['POST', 'DELETE'])
 def unenroll_student(module_id, student_id):
     """Remove student from a module"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM module_enrollments WHERE module_id = %s AND student_id = %s", (module_id, student_id))
         conn.commit()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'message': 'Student unenrolled'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/ssa/timetable', methods=['GET'])
 def get_timetable():
     """Get timetable"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM timetable LIMIT 50")
         timetable = cursor.fetchall()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'timetable': timetable or []}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/ssa/timetable', methods=['POST'])
 def create_timetable_entry():
     """Create timetable entry"""
+    conn = None
     try:
         data = request.get_json()
         conn = get_connection()
@@ -458,42 +489,51 @@ def create_timetable_entry():
         """, (data.get('module_id'), data.get('day'), data.get('start_time'), data.get('end_time'), data.get('room')))
         conn.commit()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'message': 'Timetable entry created'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/ssa/timetable/<int:entry_id>', methods=['DELETE'])
 def delete_timetable_entry(entry_id):
     """Delete timetable entry"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM timetable WHERE id = %s", (entry_id,))
         conn.commit()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'message': 'Timetable entry deleted'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/attendance/classes', methods=['GET'])
 def get_attendance_classes():
     """Get classes for attendance tracking"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT id, code, name FROM modules LIMIT 50")
         classes = cursor.fetchall()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'classes': classes or []}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/attendance/daily-summary', methods=['GET'])
 def get_daily_summary():
     """Get daily attendance summary"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
@@ -509,10 +549,12 @@ def get_daily_summary():
         """)
         summary = cursor.fetchall()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'summary': summary or []}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 # ============================================================================
 # LECTURER ENDPOINTS
@@ -521,20 +563,24 @@ def get_daily_summary():
 @app.route('/api/lecturer/classes', methods=['GET'])
 def get_lecturer_classes():
     """Get classes assigned to the lecturer"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT id, code, name FROM modules LIMIT 20")
         classes = cursor.fetchall()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'classes': classes or []}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/lecturer/attendance', methods=['GET'])
 def get_lecturer_attendance():
     """Get attendance records for lecturer's classes"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
@@ -550,14 +596,17 @@ def get_lecturer_attendance():
         """)
         records = cursor.fetchall()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'records': records or []}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/lecturer/reports', methods=['GET'])
 def get_lecturer_reports():
     """Get attendance reports"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
@@ -572,10 +621,12 @@ def get_lecturer_reports():
         """)
         reports = cursor.fetchall()
         cursor.close()
-        conn.close()
         return jsonify({'ok': True, 'reports': reports or []}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/lecturer/notifications', methods=['GET'])
 def get_lecturer_notifications():
@@ -595,6 +646,7 @@ def get_lecturer_notifications():
 @app.route('/api/lecturer/dashboard/stats', methods=['GET'])
 def get_lecturer_dashboard_stats():
     """Get dashboard statistics for lecturer"""
+    conn = None
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
@@ -621,7 +673,6 @@ def get_lecturer_dashboard_stats():
         avg_attendance = result['avg'] or 0 if result and result['avg'] else 0
         
         cursor.close()
-        conn.close()
         
         return jsonify({
             'success': True,
@@ -634,6 +685,9 @@ def get_lecturer_dashboard_stats():
         }), 200
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/lecturer/notifications/subscribe', methods=['POST'])
 def subscribe_notifications():
