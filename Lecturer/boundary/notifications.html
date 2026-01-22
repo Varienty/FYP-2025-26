@@ -87,7 +87,7 @@
             }, 3000);
         }
 
-        const API_BASE = window.API_ENDPOINTS?.['lecturer-notifications'] || 'http://localhost:5007';
+        const API_BASE = window.location.origin || 'http://localhost:5000';
         let notifications = [];
 
         // Load notifications from database
@@ -275,7 +275,7 @@
         // Generate class start notifications
         async function generateClassReminders() {
             try {
-                const apiBase = window.API_ENDPOINTS?.['lecturer-notifications'] || 'http://localhost:5007';
+                const apiBase = window.location.origin || 'http://localhost:5000';
                 const response = await fetch(`${apiBase}/api/lecturer/notifications/generate-class-reminders`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }

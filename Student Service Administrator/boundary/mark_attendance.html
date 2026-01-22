@@ -249,7 +249,7 @@
         // Check authentication
         requireAuth('student-service-admin');
 
-        const API_BASE = window.API_ENDPOINTS?.['student-service-admin'] || 'http://localhost:5008';
+        const API_BASE = window.location.origin || 'http://localhost:5000';
 
         let currentModuleId = null;
         let sessions = [];

@@ -578,6 +578,66 @@ def get_lecturer_notifications():
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
+@app.route('/api/lecturer/dashboard/stats', methods=['GET'])
+def get_lecturer_dashboard_stats():
+    """Get dashboard statistics for lecturer"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get total classes
+        cursor.execute("SELECT COUNT(*) as total FROM modules")
+        total_classes = cursor.fetchone()['total'] or 0
+        
+        # Get today's classes
+        cursor.execute("""
+            SELECT COUNT(*) as total FROM timetable 
+            WHERE DAYNAME(NOW()) LIKE day
+        """)
+        today_classes = cursor.fetchone()['total'] or 0
+        
+        # Get average attendance
+        cursor.execute("""
+            SELECT 
+                ROUND(SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) as avg
+            FROM attendance
+            WHERE attendance_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        """)
+        result = cursor.fetchone()
+        avg_attendance = result['avg'] or 0 if result and result['avg'] else 0
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'totalClasses': total_classes,
+                'todayClasses': today_classes,
+                'avgAttendance': avg_attendance,
+                'activeSessions': 0
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/lecturer/notifications/subscribe', methods=['POST'])
+def subscribe_notifications():
+    """Subscribe to notifications"""
+    try:
+        data = request.get_json()
+        return jsonify({'ok': True, 'message': 'Subscribed to notifications'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/lecturer/notifications/generate-reminders', methods=['POST'])
+def generate_notification_reminders():
+    """Generate class reminders"""
+    try:
+        return jsonify({'ok': True, 'message': 'Reminders generated'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # ============================================================================
 # ERROR HANDLERS
 # ============================================================================

@@ -134,7 +134,7 @@
             }
 
             try {
-                const apiBase = window.API_ENDPOINTS?.['student-service-admin'] || 'http://localhost:5008';
+                const apiBase = window.location.origin || 'http://localhost:5000';
                 const response = await fetch(apiBase + '/api/auth/change-password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

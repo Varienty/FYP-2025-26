@@ -122,7 +122,7 @@
         // Load modules on page load
         async function loadModules() {
             try {
-                const apiBase = window.API_ENDPOINTS?.['student-service-admin'] || 'http://localhost:5008';
+                const apiBase = window.location.origin || 'http://localhost:5000';
                 const response = await fetch(apiBase + '/api/ssa/modules');
                 const data = await response.json();
 
@@ -157,7 +157,7 @@
             }
 
             try {
-                const apiBase = window.API_ENDPOINTS?.['student-service-admin'] || 'http://localhost:5008';
+                const apiBase = window.location.origin || 'http://localhost:5000';
                 const response = await fetch(apiBase + `/api/compliance/report?threshold=${threshold}&module_id=${moduleId}`, {
                     headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('auth_user') }
                 });

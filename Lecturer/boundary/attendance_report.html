@@ -364,10 +364,11 @@
 
                 // Build URL with appropriate parameter
                 let url;
+                const apiBase = window.location.origin || 'http://localhost:5000';
                 if (lecturerEmail) {
-                    url = `http://localhost:5006/api/lecturer/classes?email=${encodeURIComponent(lecturerEmail)}`;
+                    url = `${apiBase}/api/lecturer/classes?email=${encodeURIComponent(lecturerEmail)}`;
                 } else if (lecturerId) {
-                    url = `http://localhost:5006/api/lecturer/classes?lecturerId=${lecturerId}`;
+                    url = `${apiBase}/api/lecturer/classes?lecturerId=${lecturerId}`;
                 } else {
                     throw new Error('No lecturer identifier found in session');
                 }
@@ -453,7 +454,7 @@
                 const user = JSON.parse(sessionStorage.getItem('auth_user'));
                 const lecturerId = user.lecturerId || user.lecturer_id;
 
-                const response = await fetch('http://localhost:5005/api/lecturer/report/generate', {
+                const response = await fetch(`${window.location.origin}/api/lecturer/report/generate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

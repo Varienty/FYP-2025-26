@@ -213,7 +213,7 @@
         async function loadAllRecords() {
             console.log('[loadAllRecords] Fetching today\'s attendance records from backend...');
             try {
-                const apiBase = window.API_ENDPOINTS?.['lecturer-attendance'] || 'http://localhost:5004';
+                const apiBase = window.location.origin || 'http://localhost:5000';
                 const user = getCurrentUser();
                 const today = new Date().toISOString().split('T')[0];
                 const url = apiBase + '/api/lecturer/attendance/filter';
@@ -270,7 +270,7 @@
 
             try {
                 // Call attendanceController.filterRecords() (Sequence Diagram #18)
-                const apiBase = window.API_ENDPOINTS?.['lecturer-attendance'] || 'http://localhost:5004';
+                const apiBase = window.location.origin || 'http://localhost:5000';
                 const response = await fetch(apiBase + '/api/lecturer/attendance/filter', {
                     method: 'POST',
                     headers: {
@@ -360,7 +360,7 @@
         async function updateAttendanceStatus(record, newStatus, rowElement) {
             try {
                 const user = getCurrentUser();
-                const apiBase = window.API_ENDPOINTS?.['lecturer-attendance'] || 'http://localhost:5004';
+                const apiBase = window.location.origin || 'http://localhost:5000';
                 const response = await fetch(apiBase + '/api/lecturer/attendance/update-status', {
                     method: 'POST',
                     headers: {

@@ -173,7 +173,7 @@
         // Load programs from students table
         async function loadPrograms() {
             try {
-                const apiBase = window.API_ENDPOINTS?.['student-service-admin'] || 'http://localhost:5008';
+                const apiBase = window.location.origin || 'http://localhost:5000';
                 const response = await fetch(apiBase + '/api/ssa/programs', {
                     method: 'GET',
                     headers: {
@@ -299,7 +299,7 @@
                 formData.append('academicYear', academicYear);
                 formData.append('intake', intake);
 
-                const apiBase = window.API_ENDPOINTS?.['student-service-admin'] || 'http://localhost:5008';
+                const apiBase = window.location.origin || 'http://localhost:5000';
                 const response = await fetch(apiBase + '/api/upload/students', {
                     method: 'POST',
                     body: formData

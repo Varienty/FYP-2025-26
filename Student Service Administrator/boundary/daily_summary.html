@@ -94,7 +94,7 @@
 
         async function loadDailySummary() {
             try {
-                const apiBase = window.API_ENDPOINTS?.['student-service-admin'] || 'http://localhost:5008';
+                const apiBase = window.location.origin || 'http://localhost:5000';
                 const response = await fetch(apiBase + '/api/attendance/daily-summary', {
                     headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('auth_user') }
                 });

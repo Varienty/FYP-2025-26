@@ -227,17 +227,11 @@
             }
 
             const user = JSON.parse(authUser);
-            const lecturerId = user.lecturer_id || user.lecturerId;
             
-            if (!lecturerId) {
-                showMessage('No lecturer ID found', 'error');
-                return;
-            }
-
             try {
-                // Dashboard stats are on port 5004 (lecturer-attendance)
-                const API_BASE = window.API_ENDPOINTS?.['lecturer-attendance'] || 'http://localhost:5004';
-                const response = await fetch(`${API_BASE}/api/lecturer/dashboard/stats?lecturerId=${lecturerId}`, {
+                // Use unified backend on port 5000
+                const API_BASE = window.location.origin || 'http://localhost:5000';
+                const response = await fetch(`${API_BASE}/api/lecturer/dashboard/stats`, {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -275,16 +269,14 @@
             if (!authUser) return;
 
             const user = JSON.parse(authUser);
-            const lecturerId = user.lecturer_id || user.lecturerId;
 
             try {
-                // Notifications are on port 5007 (lecturer-notifications)
-                const API_BASE = window.API_ENDPOINTS?.['lecturer-notifications'] || 'http://localhost:5007';
-                const response = await fetch(`${API_BASE}/api/lecturer/notification/subscribe`, {
+                // Use unified backend
+                const API_BASE = window.location.origin || 'http://localhost:5000';
+                const response = await fetch(`${API_BASE}/api/lecturer/notifications/subscribe`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        lecturerId: lecturerId,
                         email: user.email
                     })
                 });
@@ -342,18 +334,18 @@
         // Generate class start notifications
         async function generateClassReminders() {
             try {
-                const apiBase = window.API_ENDPOINTS?.['lecturer-notifications'] || 'http://localhost:5007';
-                const response = await fetch(`${apiBase}/api/lecturer/notifications/generate-class-reminders`, {
+                const API_BASE = window.location.origin || 'http://localhost:5000';
+                const response = await fetch(`${API_BASE}/api/lecturer/notifications/generate-reminders`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
 
                 if (response.ok) {
                     const data = await response.json();
-                    console.log(`[Dashboard] Generated ${data.count} class reminder(s)`);
+                    console.log(`[Dashboard] Generated reminders`);
                 }
             } catch (error) {
-                console.error('[Dashboard] Error generating class reminders:', error);
+                console.error('[Dashboard] Error generating reminders:', error);
             }
         }
 
