@@ -688,12 +688,12 @@ def get_daily_summary():
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT DATE(attendance_date) as date, COUNT(*) as total_records,
-                   SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present,
-                   SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) as absent
+            SELECT DATE(check_in_time) as date, COUNT(*) as total_records,
+                   SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
+                   SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent
             FROM attendance
-            WHERE attendance_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-            GROUP BY DATE(attendance_date)
+            WHERE check_in_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            GROUP BY DATE(check_in_time)
             ORDER BY date DESC
             LIMIT 30
         """)
@@ -736,12 +736,12 @@ def get_lecturer_attendance():
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
             SELECT a.id, s.student_id, s.first_name, s.last_name, 
-                   m.code as class_code, a.status, a.attendance_date
+                   m.module_code as class_code, a.status, a.check_in_time
             FROM attendance a
             INNER JOIN students s ON a.student_id = s.id
             INNER JOIN modules m ON a.module_id = m.id
-            WHERE a.attendance_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-            ORDER BY a.attendance_date DESC
+            WHERE a.check_in_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            ORDER BY a.check_in_time DESC
             LIMIT 100
         """)
         records = cursor.fetchall()
@@ -763,9 +763,9 @@ def get_lecturer_reports():
         cursor.execute("""
             SELECT m.id, m.module_code as code, m.module_name as name,
                    COUNT(a.id) as total_attendance_records,
-                   SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END) as present_count
+                   SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as present_count
             FROM modules m
-            LEFT JOIN attendance a ON m.id = a.class_id
+            LEFT JOIN attendance a ON m.id = a.module_id
             GROUP BY m.id, m.module_code, m.module_name
             LIMIT 20
         """)
@@ -815,9 +815,9 @@ def get_lecturer_dashboard_stats():
         # Get average attendance
         cursor.execute("""
             SELECT 
-                ROUND(SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) as avg
+                ROUND(SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) as avg
             FROM attendance
-            WHERE attendance_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            WHERE check_in_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
         """)
         result = cursor.fetchone()
         avg_attendance = result['avg'] or 0 if result and result['avg'] else 0
