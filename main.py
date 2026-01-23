@@ -610,7 +610,14 @@ def get_timetable():
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM timetable LIMIT 50")
+        cursor.execute("""
+            SELECT id, module_id, day_of_week, 
+                   TIME_FORMAT(start_time, '%H:%i') as start_time,
+                   TIME_FORMAT(end_time, '%H:%i') as end_time,
+                   room, is_active
+            FROM timetable 
+            LIMIT 50
+        """)
         timetable = cursor.fetchall()
         cursor.close()
         return jsonify({'ok': True, 'timetable': timetable or []}), 200
