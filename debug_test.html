@@ -54,26 +54,29 @@
     </div>
 
     <div class="test-section">
-        <h2>6. Database Data Loading Test</h2>
-        <p><strong>System Admin Endpoints:</strong></p>
-        <button onclick="testPolicies()">Test /api/policies (Policies)</button>
-        <button onclick="testUsers()">Test /api/users (Users)</button>
+        <h2>6. Database Connection & Data Test</h2>
+        <button onclick="testDatabaseHealth()">Test Database Health</button>
+        <button onclick="testAllEndpoints()">Test All Endpoints</button>
+        <button onclick="testTableCounts()">Test Table Row Counts</button>
+        
+        <div id="dbHealthTest" style="margin-top: 10px;"></div>
+        
+        <p style="margin-top: 15px;"><strong>System Admin Endpoints:</strong></p>
+        <button onclick="testPolicies()">Policies</button>
+        <button onclick="testUsers()">Users</button>
+        <button onclick="testAlerts()">Alerts</button>
         
         <p style="margin-top: 15px;"><strong>Student Service Admin Endpoints:</strong></p>
-        <button onclick="testModules()">Test /api/ssa/modules (Modules)</button>
-        <button onclick="testLecturers()">Test /api/ssa/lecturers (Lecturers)</button>
-        <button onclick="testStudents()">Test /api/ssa/students (Students)</button>
-        <button onclick="testTimetable()">Test /api/ssa/timetable (Timetable)</button>
+        <button onclick="testModules()">Modules</button>
+        <button onclick="testLecturers()">Lecturers</button>
+        <button onclick="testStudents()">Students</button>
+        <button onclick="testTimetable()">Timetable</button>
         
-        <p style="margin-top: 15px;"><strong>Attendance & Summary Endpoints:</strong></p>
-        <button onclick="testClasses()">Test /api/attendance/classes (Classes)</button>
-        <button onclick="testDailySummary()">Test /api/attendance/daily-summary (Daily Summary)</button>
-        
-        <p style="margin-top: 15px;"><strong>Lecturer Endpoints:</strong></p>
-        <button onclick="testLecturerClasses()">Test /api/lecturer/classes</button>
-        <button onclick="testLecturerAttendance()">Test /api/lecturer/attendance</button>
-        <button onclick="testLecturerReports()">Test /api/lecturer/reports</button>
-        <button onclick="testLecturerStats()">Test /api/lecturer/dashboard/stats</button>
+        <p style="margin-top: 15px;"><strong>Attendance & Reports:</strong></p>
+        <button onclick="testClasses()">Classes</button>
+        <button onclick="testDailySummary()">Daily Summary</button>
+        <button onclick="testLecturerReports()">Lecturer Reports</button>
+        <button onclick="testLecturerAttendance()">Lecturer Attendance</button>
         
         <div id="dbTest" style="margin-top: 10px;"></div>
     </div>
@@ -278,10 +281,106 @@
         function testDailySummary() { testEndpoint('/api/attendance/daily-summary', 'Daily Summary'); }
         
         // Lecturer endpoints
-        function testLecturerClasses() { testEndpoint('/api/lecturer/classes', 'Lecturer Classes'); }
         function testLecturerAttendance() { testEndpoint('/api/lecturer/attendance', 'Lecturer Attendance'); }
         function testLecturerReports() { testEndpoint('/api/lecturer/reports', 'Lecturer Reports'); }
-        function testLecturerStats() { testEndpoint('/api/lecturer/dashboard/stats', 'Lecturer Dashboard Stats'); }
+        
+        // New comprehensive tests
+        function testAlerts() { testEndpoint('/api/alerts', 'System Alerts'); }
+        
+        async function testDatabaseHealth() {
+            const output = document.getElementById('dbHealthTest');
+            output.innerHTML = '<p><strong>Testing database connection...</strong></p>';
+            try {
+                // Test health endpoint
+                const healthUrl = `${window.location.origin}/health/db`;
+                const healthResponse = await fetch(healthUrl);
+                const healthData = await healthResponse.json();
+                
+                if (healthResponse.status === 200 && healthData.db === 'ok') {
+                    output.innerHTML = '<p class="success">✓ Database connection healthy</p>';
+                    
+                    // Test basic query
+                    const modulesUrl = `${window.location.origin}/api/ssa/modules`;
+                    const modulesResponse = await fetch(modulesUrl);
+                    const modulesData = await modulesResponse.json();
+                    
+                    if (modulesData.ok && modulesData.modules) {
+                        output.innerHTML += `<p class="success">✓ Database queries working - ${modulesData.modules.length} modules found</p>`;
+                    }
+                } else {
+                    output.innerHTML = `<p class="error">✗ Database connection failed: ${JSON.stringify(healthData)}</p>`;
+                }
+            } catch (e) {
+                output.innerHTML = `<p class="error">✗ Database test error: ${e.message}</p>`;
+            }
+        }
+        
+        async function testAllEndpoints() {
+            const output = document.getElementById('dbTest');
+            output.innerHTML = '<h3>Testing All Endpoints:</h3>';
+            
+            const endpoints = [
+                { url: '/api/policies', name: 'Policies', key: 'policies' },
+                { url: '/api/users', name: 'Users', key: 'users' },
+                { url: '/api/alerts', name: 'Alerts', key: 'alerts' },
+                { url: '/api/ssa/modules', name: 'Modules', key: 'modules' },
+                { url: '/api/ssa/lecturers', name: 'Lecturers', key: 'lecturers' },
+                { url: '/api/ssa/students', name: 'Students', key: 'students' },
+                { url: '/api/ssa/timetable', name: 'Timetable', key: 'timetable' },
+                { url: '/api/attendance/classes', name: 'Attendance Classes', key: 'classes' },
+                { url: '/api/attendance/daily-summary', name: 'Daily Summary', key: 'summary' },
+                { url: '/api/lecturer/classes', name: 'Lecturer Classes', key: 'classes' },
+                { url: '/api/lecturer/attendance', name: 'Lecturer Attendance', key: 'records' },
+                { url: '/api/lecturer/reports', name: 'Lecturer Reports', key: 'reports' }
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const url = `${window.location.origin}${endpoint.url}`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    
+                    if (response.status === 200) {
+                        const count = data[endpoint.key] ? data[endpoint.key].length : 0;
+                        output.innerHTML += `<p class="success">✓ ${endpoint.name}: ${count} records</p>`;
+                    } else {
+                        output.innerHTML += `<p class="error">✗ ${endpoint.name}: ${data.error || 'Failed'}</p>`;
+                    }
+                } catch (e) {
+                    output.innerHTML += `<p class="error">✗ ${endpoint.name}: ${e.message}</p>`;
+                }
+            }
+        }
+        
+        async function testTableCounts() {
+            const output = document.getElementById('dbTest');
+            output.innerHTML = '<h3>Database Table Row Counts:</h3>';
+            output.innerHTML += '<p>Fetching data from all API endpoints...</p>';
+            
+            try {
+                // Fetch from various endpoints to show data availability
+                const results = await Promise.all([
+                    fetch(`${window.location.origin}/api/ssa/modules`).then(r => r.json()),
+                    fetch(`${window.location.origin}/api/ssa/students`).then(r => r.json()),
+                    fetch(`${window.location.origin}/api/ssa/lecturers`).then(r => r.json()),
+                    fetch(`${window.location.origin}/api/policies`).then(r => r.json()),
+                    fetch(`${window.location.origin}/api/attendance/daily-summary`).then(r => r.json())
+                ]);
+                
+                let html = '<div class="code" style="text-align: left;">';
+                html += `<strong>Modules:</strong> ${results[0].modules ? results[0].modules.length : 0}<br>`;
+                html += `<strong>Students:</strong> ${results[1].students ? results[1].students.length : 0}<br>`;
+                html += `<strong>Lecturers:</strong> ${results[2].lecturers ? results[2].lecturers.length : 0}<br>`;
+                html += `<strong>Policies:</strong> ${results[3].policies ? results[3].policies.length : 0}<br>`;
+                html += `<strong>Attendance Days:</strong> ${results[4].summary ? results[4].summary.length : 0}<br>`;
+                html += '</div>';
+                
+                output.innerHTML = '<h3>Database Summary:</h3>' + html;
+                output.innerHTML += '<p class="success">✓ All data queries successful</p>';
+            } catch (e) {
+                output.innerHTML += `<p class="error">✗ Error fetching counts: ${e.message}</p>`;
+            }
+        }
         
         // Run tests on page load
         window.addEventListener('DOMContentLoaded', function() {

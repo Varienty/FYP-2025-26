@@ -168,11 +168,6 @@ def lecturer_dashboard():
     """Placeholder for lecturer dashboard"""
     return jsonify({'message': 'Lecturer dashboard'}), 200
 
-@app.route('/api/lecturer/attendance', methods=['GET'])
-def lecturer_attendance():
-    """Get attendance for lecturer's classes"""
-    return jsonify({'message': 'Lecturer attendance'}), 200
-
 # ============================================================================
 # STUDENT SERVICE ADMIN ENDPOINTS
 # ============================================================================
