@@ -473,7 +473,7 @@ def get_ssa_modules():
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, class_code as code, class_name as name FROM modules LIMIT 50")
+        cursor.execute("SELECT id, module_code as code, module_name as name FROM modules LIMIT 50")
         modules = cursor.fetchall()
         cursor.close()
         return jsonify({'ok': True, 'modules': modules or []}), 200
@@ -670,7 +670,7 @@ def get_attendance_classes():
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, class_code as code, class_name as name FROM modules LIMIT 50")
+        cursor.execute("SELECT id, module_code as code, module_name as name FROM modules LIMIT 50")
         classes = cursor.fetchall()
         cursor.close()
         return jsonify({'ok': True, 'classes': classes or []}), 200
@@ -717,7 +717,7 @@ def get_lecturer_classes():
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, class_code as code, class_name as name FROM modules LIMIT 20")
+        cursor.execute("SELECT id, module_code as code, module_name as name FROM modules LIMIT 20")
         classes = cursor.fetchall()
         cursor.close()
         return jsonify({'ok': True, 'classes': classes or []}), 200
@@ -761,12 +761,12 @@ def get_lecturer_reports():
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT m.id, m.class_code as code, m.class_name as name,
+            SELECT m.id, m.module_code as code, m.module_name as name,
                    COUNT(a.id) as total_attendance_records,
                    SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END) as present_count
             FROM modules m
             LEFT JOIN attendance a ON m.id = a.class_id
-            GROUP BY m.id, m.class_code, m.class_name
+            GROUP BY m.id, m.module_code, m.module_name
             LIMIT 20
         """)
         reports = cursor.fetchall()
