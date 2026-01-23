@@ -194,9 +194,27 @@ def get_policies():
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM attendance_policies ORDER BY id LIMIT 100")
-        policies = cursor.fetchall()
+        raw_policies = cursor.fetchall()
         cursor.close()
-        return jsonify({'ok': True, 'policies': policies or []}), 200
+        
+        # Transform to camelCase for frontend consistency
+        policies = []
+        for p in raw_policies:
+            policies.append({
+                'id': p['id'],
+                'policyId': p['id'],
+                'moduleId': p['entity_id'],
+                'policyName': p['policy_name'],
+                'appliesTo': p['applies_to'],
+                'gracePeriod': p['grace_period_minutes'],
+                'lateThreshold': p['late_threshold_minutes'],
+                'minAttendance': float(p['minimum_attendance_percentage']) if p['minimum_attendance_percentage'] else None,
+                'isActive': bool(p['is_active']),
+                'createdAt': p['created_at'].isoformat() if p.get('created_at') else None,
+                'updatedAt': p['updated_at'].isoformat() if p.get('updated_at') else None
+            })
+        
+        return jsonify({'ok': True, 'policies': policies}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
     finally:
