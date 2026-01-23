@@ -1,7 +1,7 @@
 -- Import only attendance data (skip CREATE TABLE since attendance table already exists)
 -- This extracts only the INSERT statements from student_attendance.sql
 
-INSERT INTO `attendance` (`id`, `student_id`, `class_id`, `timetable_id`, `check_in_time`, `status`, `face_confidence`, `is_manual`, `manually_edited_by`, `edit_reason`) VALUES
+INSERT INTO `attendance` (`id`, `student_id`, `module_id`, `timetable_id`, `check_in_time`, `status`, `face_confidence`, `is_manual`, `manually_edited_by`, `edit_reason`) VALUES
 (3, 3, 1, 1, '2025-12-04 16:28:33', 'absent', NULL, 1, NULL, NULL),
 (8, 9, 1, 1, '2025-12-04 16:28:33', 'absent', NULL, 1, NULL, NULL),
 (9, 10, 1, 1, '2025-12-04 16:30:42', 'present', 95.50, 0, NULL, NULL),
