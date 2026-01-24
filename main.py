@@ -640,10 +640,10 @@ def get_module_students(module_id):
         cursor.execute("""
             SELECT s.id, s.student_id, s.email, s.first_name, s.last_name, s.phone,
                    s.program, s.intake_period, s.intake_year, s.academic_year, s.level, s.is_active,
-                   me.enrollment_date, me.status
+                   se.enrollment_date, se.status
             FROM students s
-            INNER JOIN module_enrollments me ON s.id = me.student_id
-            WHERE me.module_id = %s
+            INNER JOIN student_enrollments se ON s.id = se.student_id
+            WHERE se.module_id = %s
             ORDER BY s.student_id
         """, (module_id,))
         raw_students = cursor.fetchall()
@@ -724,7 +724,7 @@ def enroll_students(module_id):
         for student_id in student_ids:
             try:
                 cursor.execute(
-                    "INSERT INTO module_enrollments (module_id, student_id) VALUES (%s, %s)",
+                    "INSERT INTO student_enrollments (module_id, student_id) VALUES (%s, %s)",
                     (module_id, student_id)
                 )
             except:
@@ -746,7 +746,7 @@ def unenroll_student(module_id, student_id):
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM module_enrollments WHERE module_id = %s AND student_id = %s", (module_id, student_id))
+        cursor.execute("DELETE FROM student_enrollments WHERE module_id = %s AND student_id = %s", (module_id, student_id))
         conn.commit()
         cursor.close()
         return jsonify({'ok': True, 'message': 'Student unenrolled'}), 200
