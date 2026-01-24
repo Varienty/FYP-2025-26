@@ -73,9 +73,15 @@
             card.className = 'border rounded p-3 bg-gray-50';
             const status = p.isActive ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Active</span>' : '<span class="text-xs bg-gray-300 text-gray-700 px-2 py-1 rounded">Inactive</span>';
 
-            // Find module name
+            // Resolve module name with fallbacks
             const module = modules.find(m => m.id == p.moduleId);
-            const moduleName = module ? `${module.module_code} - ${module.module_name}` : 'Unknown Module';
+            const moduleCode = module ? (module.module_code || module.moduleCode) : null;
+            const moduleTitle = module ? (module.module_name || module.moduleName) : null;
+            const moduleName = moduleCode && moduleTitle
+                ? `${moduleCode} - ${moduleTitle}`
+                : (p.policyName || `${p.appliesTo || 'General'} Policy`);
+            const grace = p.gracePeriod ?? p.grace_period_minutes ?? '—';
+            const late = p.lateThreshold ?? p.late_threshold_minutes ?? '—';
 
             card.innerHTML = `
                 <div class="flex justify-between items-start mb-2">
@@ -83,8 +89,8 @@
                     ${status}
                 </div>
                 <div class="text-xs text-gray-700 space-y-1">
-                    <div><strong>Grace Period:</strong> ${p.gracePeriod} minutes</div>
-                    <div><strong>Late Threshold:</strong> ${p.lateThreshold} minutes</div>
+                    <div><strong>Grace Period:</strong> ${grace} minutes</div>
+                    <div><strong>Late Threshold:</strong> ${late} minutes</div>
                 </div>
                 <div class="flex gap-2 mt-2">
                     <button class="px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm" onclick="window.editPolicy('${p.id || p.policyId}')">Edit</button>
