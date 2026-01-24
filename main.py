@@ -489,11 +489,17 @@ def get_ssa_modules():
         cursor.execute("""
             SELECT m.id, m.module_code, m.module_name, m.description, 
                    m.lecturer_id, l.first_name as lecturer_first_name, l.last_name as lecturer_last_name,
-                   COUNT(DISTINCT me.student_id) as enrolled_count,
+                   COALESCE(se.enrolled_count, 0) as enrolled_count,
                    m.academic_year, m.semester, m.credits, m.is_active
             FROM modules m
             LEFT JOIN lecturers l ON m.lecturer_id = l.id
-            LEFT JOIN module_enrollments me ON m.id = me.module_id
+            LEFT JOIN (
+                SELECT
+                    COALESCE(class_id, module_id) AS module_id,
+                    COUNT(DISTINCT student_id) AS enrolled_count
+                FROM student_enrollments
+                GROUP BY COALESCE(class_id, module_id)
+            ) se ON se.module_id = m.id
             GROUP BY m.id
             LIMIT 50
         """)
@@ -503,6 +509,7 @@ def get_ssa_modules():
         # Return both snake_case (for older pages) and camelCase (for newer pages)
         modules = []
         for m in raw_modules:
+            enrolled_count = int(m['enrolled_count'] or 0)
             modules.append({
                 # Original snake_case fields
                 'id': m['id'],
@@ -512,7 +519,6 @@ def get_ssa_modules():
                 'lecturer_id': m['lecturer_id'],
                 'lecturer_first_name': m['lecturer_first_name'],
                 'lecturer_last_name': m['lecturer_last_name'],
-                'enrolled_count': m['enrolled_count'],
                 'enrolled_count': enrolled_count,
                 'semester': m['semester'],
                 'credits': m['credits'],
@@ -523,7 +529,6 @@ def get_ssa_modules():
                 'lecturerId': m['lecturer_id'],
                 'lecturerFirstName': m['lecturer_first_name'],
                 'lecturerLastName': m['lecturer_last_name'],
-                'enrolledCount': m['enrolled_count'],
                 'enrolledCount': enrolled_count,
                 'isActive': bool(m['is_active']) if m['is_active'] is not None else None
             })
