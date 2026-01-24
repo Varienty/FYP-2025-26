@@ -513,7 +513,7 @@ def get_ssa_modules():
                 'lecturer_first_name': m['lecturer_first_name'],
                 'lecturer_last_name': m['lecturer_last_name'],
                 'enrolled_count': m['enrolled_count'],
-                'academic_year': m['academic_year'],
+                'enrolled_count': enrolled_count,
                 'semester': m['semester'],
                 'credits': m['credits'],
                 'is_active': m['is_active'],
@@ -524,7 +524,7 @@ def get_ssa_modules():
                 'lecturerFirstName': m['lecturer_first_name'],
                 'lecturerLastName': m['lecturer_last_name'],
                 'enrolledCount': m['enrolled_count'],
-                'academicYear': m['academic_year'],
+                'enrolledCount': enrolled_count,
                 'isActive': bool(m['is_active']) if m['is_active'] is not None else None
             })
 
