@@ -486,10 +486,49 @@ def get_ssa_modules():
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, module_code as code, module_name as name FROM modules LIMIT 50")
-        modules = cursor.fetchall()
+        cursor.execute("""
+            SELECT m.id, m.module_code, m.module_name, m.description, 
+                   m.lecturer_id, l.first_name as lecturer_first_name, l.last_name as lecturer_last_name,
+                   COUNT(DISTINCT me.student_id) as enrolled_count,
+                   m.academic_year, m.semester, m.credits, m.is_active
+            FROM modules m
+            LEFT JOIN lecturers l ON m.lecturer_id = l.id
+            LEFT JOIN module_enrollments me ON m.id = me.module_id
+            GROUP BY m.id
+            LIMIT 50
+        """)
+        raw_modules = cursor.fetchall()
         cursor.close()
-        return jsonify({'ok': True, 'modules': modules or []}), 200
+
+        # Return both snake_case (for older pages) and camelCase (for newer pages)
+        modules = []
+        for m in raw_modules:
+            modules.append({
+                # Original snake_case fields
+                'id': m['id'],
+                'module_code': m['module_code'],
+                'module_name': m['module_name'],
+                'description': m['description'],
+                'lecturer_id': m['lecturer_id'],
+                'lecturer_first_name': m['lecturer_first_name'],
+                'lecturer_last_name': m['lecturer_last_name'],
+                'enrolled_count': m['enrolled_count'],
+                'academic_year': m['academic_year'],
+                'semester': m['semester'],
+                'credits': m['credits'],
+                'is_active': m['is_active'],
+                # CamelCase aliases for frontend convenience
+                'moduleCode': m['module_code'],
+                'moduleName': m['module_name'],
+                'lecturerId': m['lecturer_id'],
+                'lecturerFirstName': m['lecturer_first_name'],
+                'lecturerLastName': m['lecturer_last_name'],
+                'enrolledCount': m['enrolled_count'],
+                'academicYear': m['academic_year'],
+                'isActive': bool(m['is_active']) if m['is_active'] is not None else None
+            })
+
+        return jsonify({'ok': True, 'modules': modules}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
     finally:
@@ -503,10 +542,36 @@ def get_ssa_lecturers():
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, lecturer_id, email, first_name, last_name FROM lecturers LIMIT 50")
-        lecturers = cursor.fetchall()
+        cursor.execute("""
+            SELECT id, lecturer_id, email, first_name, last_name, department, 
+                   phone, is_active, created_at
+            FROM lecturers 
+            LIMIT 50
+        """)
+        raw_lecturers = cursor.fetchall()
         cursor.close()
-        return jsonify({'ok': True, 'lecturers': lecturers or []}), 200
+
+        lecturers = []
+        for l in raw_lecturers:
+            lecturers.append({
+                'id': l['id'],
+                'lecturer_id': l['lecturer_id'],
+                'email': l['email'],
+                'first_name': l['first_name'],
+                'last_name': l['last_name'],
+                'department': l['department'],
+                'phone': l['phone'],
+                'is_active': l['is_active'],
+                'created_at': l['created_at'].isoformat() if l.get('created_at') else None,
+                # CamelCase aliases
+                'lecturerId': l['lecturer_id'],
+                'firstName': l['first_name'],
+                'lastName': l['last_name'],
+                'isActive': bool(l['is_active']) if l['is_active'] is not None else None,
+                'createdAt': l['created_at'].isoformat() if l.get('created_at') else None
+            })
+
+        return jsonify({'ok': True, 'lecturers': lecturers}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
     finally:
@@ -520,10 +585,43 @@ def get_ssa_students():
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, student_id, email, first_name, last_name FROM students LIMIT 100")
-        students = cursor.fetchall()
+        cursor.execute("""
+            SELECT id, student_id, email, first_name, last_name, phone, 
+                   program, intake_period, intake_year, academic_year, level, is_active, created_at
+            FROM students 
+            LIMIT 100
+        """)
+        raw_students = cursor.fetchall()
         cursor.close()
-        return jsonify({'ok': True, 'students': students or []}), 200
+
+        students = []
+        for s in raw_students:
+            students.append({
+                'id': s['id'],
+                'student_id': s['student_id'],
+                'email': s['email'],
+                'first_name': s['first_name'],
+                'last_name': s['last_name'],
+                'phone': s['phone'],
+                'program': s['program'],
+                'intake_period': s['intake_period'],
+                'intake_year': s['intake_year'],
+                'academic_year': s['academic_year'],
+                'level': s['level'],
+                'is_active': s['is_active'],
+                'created_at': s['created_at'].isoformat() if s.get('created_at') else None,
+                # CamelCase aliases
+                'studentId': s['student_id'],
+                'firstName': s['first_name'],
+                'lastName': s['last_name'],
+                'intakePeriod': s['intake_period'],
+                'intakeYear': s['intake_year'],
+                'academicYear': s['academic_year'],
+                'isActive': bool(s['is_active']) if s['is_active'] is not None else None,
+                'createdAt': s['created_at'].isoformat() if s.get('created_at') else None
+            })
+
+        return jsonify({'ok': True, 'students': students}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
@@ -535,14 +633,46 @@ def get_module_students(module_id):
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT s.id, s.student_id, s.email, s.first_name, s.last_name
+            SELECT s.id, s.student_id, s.email, s.first_name, s.last_name, s.phone,
+                   s.program, s.intake_period, s.intake_year, s.academic_year, s.level, s.is_active,
+                   me.enrollment_date, me.status
             FROM students s
             INNER JOIN module_enrollments me ON s.id = me.student_id
             WHERE me.module_id = %s
+            ORDER BY s.student_id
         """, (module_id,))
-        students = cursor.fetchall()
+        raw_students = cursor.fetchall()
         cursor.close()
-        return jsonify({'ok': True, 'students': students or []}), 200
+
+        students = []
+        for s in raw_students:
+            students.append({
+                'id': s['id'],
+                'student_id': s['student_id'],
+                'email': s['email'],
+                'first_name': s['first_name'],
+                'last_name': s['last_name'],
+                'phone': s['phone'],
+                'program': s['program'],
+                'intake_period': s['intake_period'],
+                'intake_year': s['intake_year'],
+                'academic_year': s['academic_year'],
+                'level': s['level'],
+                'is_active': s['is_active'],
+                'enrollment_date': s['enrollment_date'].isoformat() if s.get('enrollment_date') else None,
+                'status': s['status'],
+                # CamelCase aliases
+                'studentId': s['student_id'],
+                'firstName': s['first_name'],
+                'lastName': s['last_name'],
+                'intakePeriod': s['intake_period'],
+                'intakeYear': s['intake_year'],
+                'academicYear': s['academic_year'],
+                'isActive': bool(s['is_active']) if s['is_active'] is not None else None,
+                'enrollmentDate': s['enrollment_date'].isoformat() if s.get('enrollment_date') else None
+            })
+
+        return jsonify({'ok': True, 'students': students}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
     finally:
@@ -636,9 +766,28 @@ def get_timetable():
             FROM timetable 
             LIMIT 50
         """)
-        timetable = cursor.fetchall()
+        raw_timetable = cursor.fetchall()
         cursor.close()
-        return jsonify({'ok': True, 'timetable': timetable or []}), 200
+
+        timetable = []
+        for t in raw_timetable:
+            timetable.append({
+                'id': t['id'],
+                'module_id': t['module_id'],
+                'day_of_week': t['day_of_week'],
+                'start_time': t['start_time'],
+                'end_time': t['end_time'],
+                'room': t['room'],
+                'is_active': t['is_active'],
+                # CamelCase aliases
+                'moduleId': t['module_id'],
+                'dayOfWeek': t['day_of_week'],
+                'startTime': t['start_time'],
+                'endTime': t['end_time'],
+                'isActive': bool(t['is_active']) if t['is_active'] is not None else None
+            })
+
+        return jsonify({'ok': True, 'timetable': timetable}), 200
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
     finally:
