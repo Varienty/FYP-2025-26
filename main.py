@@ -495,10 +495,10 @@ def get_ssa_modules():
             LEFT JOIN lecturers l ON m.lecturer_id = l.id
             LEFT JOIN (
                 SELECT
-                    COALESCE(class_id, module_id) AS module_id,
+                    module_id AS module_id,
                     COUNT(DISTINCT student_id) AS enrolled_count
                 FROM student_enrollments
-                GROUP BY COALESCE(class_id, module_id)
+                GROUP BY module_id
             ) se ON se.module_id = m.id
             GROUP BY m.id
             LIMIT 50
