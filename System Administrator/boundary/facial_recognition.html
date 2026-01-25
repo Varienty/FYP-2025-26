@@ -315,6 +315,39 @@
     </style>
 </head>
 <body>
+    <!-- Navigation Bar -->
+    <nav class="bg-gradient-to-r from-primary-blue to-primary-blue-dark text-white shadow-xl" style="position: fixed; top: 0; left: 0; right: 0; z-index: 9999;">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                    <span class="text-xl font-bold">System Admin</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-1">
+                    <a href="dashboard.html" class="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 font-semibold transition">
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="facial_recognition.html" class="flex items-center space-x-2 px-4 py-2 rounded-lg bg-white bg-opacity-20 font-semibold transition">
+                        <span>Recognition</span>
+                    </a>
+                    <a href="policy_config.html" class="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 font-semibold transition">
+                        <span>Policies</span>
+                    </a>
+                    <a href="hardware_monitor.html" class="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 font-semibold transition">
+                        <span>Hardware</span>
+                    </a>
+                    <a href="permissions_management.html" class="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 font-semibold transition">
+                        <span>Permissions</span>
+                    </a>
+                </div>
+                <button id="btnLogoutNav" class="flex items-center space-x-2 bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-semibold transition shadow-lg">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div style="padding-top: 76px;">
     <div class="container">
         <!-- Header -->
         <div class="header">
