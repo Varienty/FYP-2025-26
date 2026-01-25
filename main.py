@@ -28,20 +28,49 @@ FaceDetector = None
 FaceRecognizer = None
 FaceDatabase = None
 
+print("[INIT] Attempting to locate facial_recognition_controller...")
+print(f"[INIT] Current working directory: {os.getcwd()}")
+print(f"[INIT] Script directory: {os.path.dirname(__file__)}")
+
+# List what's in the script directory
+script_dir = os.path.dirname(__file__)
+if os.path.exists(script_dir):
+    print(f"[INIT] Contents of {script_dir}:")
+    try:
+        for item in os.listdir(script_dir):
+            item_path = os.path.join(script_dir, item)
+            item_type = 'DIR' if os.path.isdir(item_path) else 'FILE'
+            print(f"  [{item_type}] {item}")
+    except Exception as e:
+        print(f"  Error listing: {e}")
+
+# Try different path variants
 for path_variant in [
     os.path.join(os.path.dirname(__file__), 'System Administrator', 'controller'),
     os.path.join(os.path.dirname(__file__), 'System_Administrator', 'controller'),
     os.path.join(os.path.dirname(__file__), 'system_administrator', 'controller'),
+    os.path.join(os.path.dirname(__file__), 'SystemAdministrator', 'controller'),
 ]:
+    print(f"[INIT] Checking path: {path_variant}")
+    print(f"[INIT]   Exists: {os.path.exists(path_variant)}")
+    
     if os.path.exists(path_variant):
+        print(f"[INIT] Found! Adding to sys.path and attempting import...")
         sys.path.insert(0, path_variant)
         try:
             from facial_recognition_controller import FaceDetector, FaceRecognizer, FaceDatabase
             FACIAL_RECOGNITION_AVAILABLE = True
-            print(f"✓ Facial recognition modules imported from: {path_variant}")
+            print(f"✓ Facial recognition modules imported successfully from: {path_variant}")
             break
+        except ImportError as e:
+            print(f"⚠ ImportError for {path_variant}: {e}")
+            import traceback
+            traceback.print_exc()
+            continue
         except Exception as e:
-            print(f"⚠ Import failed for {path_variant}: {type(e).__name__}: {e}")
+            print(f"⚠ Unexpected error for {path_variant}: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
             continue
 
 if not FACIAL_RECOGNITION_AVAILABLE:
