@@ -582,8 +582,13 @@
 
                 try {
                     // Capture full frame and send to backend for detection
-                    grabCanvas.width = video.videoWidth;
-                    grabCanvas.height = video.videoHeight;
+                    // Downscale to reduce bandwidth/CPU (keep aspect ratio, target width 640)
+                    const vw = video.videoWidth;
+                    const vh = video.videoHeight;
+                    const targetW = 640;
+                    const scale = Math.min(1, targetW / (vw || 640));
+                    grabCanvas.width = Math.max(1, Math.round((vw || 640) * scale));
+                    grabCanvas.height = Math.max(1, Math.round((vh || 480) * scale));
                     grabCtx.drawImage(video, 0, 0, grabCanvas.width, grabCanvas.height);
 
                     // Update hint text while processing
