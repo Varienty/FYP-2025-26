@@ -486,6 +486,13 @@
 
         // Start camera with permission request
         async function startCamera() {
+            // Check browser support
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showNotification('❌ Browser does not support camera access. Please use a modern browser (Chrome, Firefox, Edge, Safari).', 'error');
+                console.error('Camera API not available in this browser');
+                return;
+            }
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
