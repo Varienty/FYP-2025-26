@@ -10,7 +10,6 @@ Usage:
 
 import os
 import json
-import sys
 import base64
 from datetime import date, datetime
 from flask import Flask, jsonify, send_from_directory, request
@@ -22,60 +21,21 @@ import bcrypt
 cv2 = None
 np = None
 
-# Try both path variants for facial recognition controller
+# Facial recognition imports (now relocated to a space-free package path)
 FACIAL_RECOGNITION_AVAILABLE = False
 FaceDetector = None
 FaceRecognizer = None
 FaceDatabase = None
 
-print("[INIT] Attempting to locate facial_recognition_controller...")
-print(f"[INIT] Current working directory: {os.getcwd()}")
-print(f"[INIT] Script directory: {os.path.dirname(__file__)}")
-
-# List what's in the script directory
-script_dir = os.path.dirname(__file__)
-if os.path.exists(script_dir):
-    print(f"[INIT] Contents of {script_dir}:")
-    try:
-        for item in os.listdir(script_dir):
-            item_path = os.path.join(script_dir, item)
-            item_type = 'DIR' if os.path.isdir(item_path) else 'FILE'
-            print(f"  [{item_type}] {item}")
-    except Exception as e:
-        print(f"  Error listing: {e}")
-
-# Try different path variants
-for path_variant in [
-    os.path.join(os.path.dirname(__file__), 'System Administrator', 'controller'),
-    os.path.join(os.path.dirname(__file__), 'System_Administrator', 'controller'),
-    os.path.join(os.path.dirname(__file__), 'system_administrator', 'controller'),
-    os.path.join(os.path.dirname(__file__), 'SystemAdministrator', 'controller'),
-]:
-    print(f"[INIT] Checking path: {path_variant}")
-    print(f"[INIT]   Exists: {os.path.exists(path_variant)}")
-    
-    if os.path.exists(path_variant):
-        print(f"[INIT] Found! Adding to sys.path and attempting import...")
-        sys.path.insert(0, path_variant)
-        try:
-            from facial_recognition_controller import FaceDetector, FaceRecognizer, FaceDatabase
-            FACIAL_RECOGNITION_AVAILABLE = True
-            print(f"✓ Facial recognition modules imported successfully from: {path_variant}")
-            break
-        except ImportError as e:
-            print(f"⚠ ImportError for {path_variant}: {e}")
-            import traceback
-            traceback.print_exc()
-            continue
-        except Exception as e:
-            print(f"⚠ Unexpected error for {path_variant}: {type(e).__name__}: {e}")
-            import traceback
-            traceback.print_exc()
-            continue
-
-if not FACIAL_RECOGNITION_AVAILABLE:
-    print("⚠ Facial recognition not available - all path variants failed")
-    # Dummy classes to prevent crashes
+try:
+    from facerec.facial_recognition_controller import FaceDetector, FaceRecognizer, FaceDatabase
+    FACIAL_RECOGNITION_AVAILABLE = True
+    print("✓ Facial recognition modules imported from package 'facerec'")
+except Exception as e:
+    print(f"⚠ Facial recognition not available: {type(e).__name__}: {e}")
+    import traceback
+    traceback.print_exc()
+    # Dummy classes to prevent crashes when FR is unavailable
     class FaceDetector: pass
     class FaceRecognizer: pass
     class FaceDatabase: pass
@@ -106,25 +66,13 @@ def init_facial_recognition():
         return False
     
     try:
-        model_dir = os.path.join(os.path.dirname(__file__), 'System Administrator', 'controller', 'models')
-        print(f"[FR-INIT] Looking for models in: {model_dir}")
+        model_dir = os.path.join(os.path.dirname(__file__), 'facerec', 'models')
+        print(f"[FR-INIT] Using model directory: {model_dir}")
         print(f"[FR-INIT] Directory exists: {os.path.exists(model_dir)}")
         
         if not os.path.exists(model_dir):
-            print(f"[FR-INIT] Model directory not found, trying alternate paths...")
-            # Try alternate paths
-            for variant in ['System_Administrator', 'system_administrator', 'SystemAdministrator']:
-                alt_dir = os.path.join(os.path.dirname(__file__), variant, 'controller', 'models')
-                print(f"[FR-INIT] Trying: {alt_dir} - exists: {os.path.exists(alt_dir)}")
-                if os.path.exists(alt_dir):
-                    model_dir = alt_dir
-                    break
-            
-            if not os.path.exists(model_dir):
-                print(f"⚠ Model directory not found at any variant path")
-                return False
-        
-        print(f"[FR-INIT] Using model directory: {model_dir}")
+            print("⚠ Model directory not found - facial recognition cannot start")
+            return False
         
         # Initialize face detector
         face_detection_model = os.path.join(model_dir, 'face_detection_yunet_2023mar.onnx')
