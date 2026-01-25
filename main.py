@@ -11,14 +11,16 @@ Usage:
 import os
 import json
 import sys
+import base64
 from datetime import date, datetime
 from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
 from common.db_utils import get_connection
 import bcrypt
-import base64
-import cv2
-import numpy as np
+
+# Lazy imports for heavy dependencies (OpenCV, NumPy)
+cv2 = None
+np = None
 
 # Add System Administrator controller path for facial recognition
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'System Administrator', 'controller'))
@@ -1528,6 +1530,23 @@ def facial_recognition_timetable_all():
 @app.route('/api/facial-recognition/identify', methods=['POST'])
 def facial_recognition_identify():
     """Identify student from face image using AI facial recognition"""
+    global cv2, np
+    
+    # Lazy load OpenCV and NumPy only when needed
+    if cv2 is None:
+        try:
+            import cv2 as cv2_module
+            cv2 = cv2_module
+        except ImportError:
+            cv2 = None
+    
+    if np is None:
+        try:
+            import numpy as np_module
+            np = np_module
+        except ImportError:
+            np = None
+    
     try:
         data = request.get_json()
         image_data = data.get('image')
@@ -1552,6 +1571,21 @@ def facial_recognition_identify():
                     'message': 'Demo mode - facial recognition not available'
                 }), 200
             return jsonify({'ok': False, 'error': 'Facial recognition not available'}), 503
+        
+        # Check if OpenCV is available
+        if cv2 is None or np is None:
+            print("⚠ OpenCV/NumPy not available, returning demo data")
+            if confidence_threshold > 0.7:
+                demo_students = [
+                    {'student_id': 'S9001', 'name': 'Alice Tester'},
+                    {'student_id': 'S9002', 'name': 'Bob Tester'},
+                ]
+                import random
+                return jsonify({
+                    'ok': True,
+                    'student': random.choice(demo_students),
+                    'message': 'Demo mode - OpenCV not available'
+                }), 200
         
         # Decode base64 image
         try:
