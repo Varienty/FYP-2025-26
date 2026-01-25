@@ -358,6 +358,12 @@
 
     <div style="padding-top: 76px;">
     <div class="container">
+        <!-- HTTPS Warning -->
+        <div id="httpsWarning" style="display: none; background: #fed7d7; color: #c53030; padding: 15px; margin: 20px; border-radius: 8px; border-left: 4px solid #c53030;">
+            <strong>⚠️ HTTPS Required:</strong> Camera access requires a secure connection. 
+            <a href="javascript:window.location.href = window.location.href.replace('http://', 'https://');" style="color: #742a2a; text-decoration: underline; font-weight: bold;">Click here to switch to HTTPS</a>
+            or use: <code style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px;">https://fyp-flask-env.eba-8ev8txxm.ap-southeast-1.elasticbeanstalk.com</code>
+        </div>
         <!-- Header -->
         <div class="header">
             <h1>
@@ -450,6 +456,16 @@
     </div>
 
     <script>
+        // Check if HTTPS is required and not enabled
+        function checkHTTPS() {
+            if (window.location.protocol === 'http:' && !window.location.hostname.includes('localhost')) {
+                document.getElementById('httpsWarning').style.display = 'block';
+                console.warn('⚠️ HTTPS Required: Camera access requires a secure connection.');
+                return false;
+            }
+            return true;
+        }
+
         // Global state
         let video, canvas, ctx;
         let cameraActive = false;
@@ -458,6 +474,7 @@
         let detectionInterval = null;
         let sessionInfo = null;
         let modelsLoaded = false;
+        let isHTTPS = checkHTTPS();
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -486,6 +503,13 @@
 
         // Start camera with permission request
         async function startCamera() {
+            // Check HTTPS first
+            if (!isHTTPS) {
+                showNotification('❌ Camera requires HTTPS. Please use a secure connection.', 'error');
+                console.error('Camera access requires HTTPS (not HTTP)');
+                return;
+            }
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
@@ -509,12 +533,41 @@
                 };
             } catch (error) {
                 let msg = 'Camera error';
+                let details = '';
+                
+                console.error('Camera error details:', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
+                
                 if (error.name === 'NotAllowedError') {
-                    msg = 'Camera permission denied. Please allow camera access.';
+                    msg = '❌ Permission Denied';
+                    details = 'Click "Allow" when the browser asks for camera permission, or check your browser privacy settings.';
                 } else if (error.name === 'NotFoundError') {
-                    msg = 'No camera found. Please connect a camera device.';
+                    msg = '❌ No Camera Found';
+                    details = 'No camera device detected. Please connect a webcam or enable your built-in camera.';
+                } else if (error.name === 'NotReadableError') {
+                    msg = '❌ Camera In Use';
+                    details = 'Your camera is already in use by another application (Zoom, Teams, etc.). Close other apps first.';
+                } else if (error.name === 'SecurityError' || error.message.includes('insecure')) {
+                    msg = '❌ HTTPS Required';
+                    details = 'Camera access requires a secure connection (HTTPS). Switch to HTTPS using the link at the top of the page.';
+                } else {
+                    msg = '❌ Camera Error: ' + error.name;
+                    details = error.message;
                 }
-                showNotification(msg, 'error');
+                
+                showNotification(`${msg}: ${details}`, 'error');
+                console.error('Full error:', error);
+            }
+        }
+                } else if (error.name === 'NotFoundError') {
+                    msg = '❌ No Camera Found';
+                    details = 'No camera device detected. Please connect a webcam or enable your built-in camera.';
+                }
+                
+                showNotification(`${msg}: ${details}`, 'error');
             }
         }
 
