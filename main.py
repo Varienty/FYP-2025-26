@@ -1635,10 +1635,8 @@ def facial_recognition_identify():
                 'error': 'Could not extract face region'
             }), 400
         
-        # Get face feature/encoding using recognizer (use full frame + coords for better alignment)
-        # Build coords array [x, y, w, h] plus placeholders for landmarks if needed
-        face_coords = np.array([x, y, w, h, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.0], dtype=np.float32)
-        face_feature = face_recognizer.extract_features(frame, face_coords)
+        # Get face feature/encoding using pre-cropped face image (works without landmarks)
+        face_feature = face_recognizer.extract_features_from_image(face_roi)
         
         if face_feature is None:
             return jsonify({
