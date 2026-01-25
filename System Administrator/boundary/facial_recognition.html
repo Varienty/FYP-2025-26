@@ -612,8 +612,9 @@
     </div>
 
     <script>
-        const API_BASE = window.location.origin || 'http://localhost:5000';
-
+        // API_BASE is already defined in config.js (loaded above)
+        // Do NOT redefine it here - use window.API_BASE instead
+        
         let cameraActive = false;
         let scanningActive = false;
         let recognizedStudents = [];
@@ -642,7 +643,7 @@
             if (cameraActive) {
                 // Stop camera before leaving
                 try {
-                    await fetch(`${API_BASE}/api/facial-recognition/camera/stop`, {
+                    await fetch(`${window.API_BASE}/api/facial-recognition/camera/stop`, {
                         method: 'POST',
                         keepalive: true // Ensure request completes even as page unloads
                     });
@@ -656,7 +657,7 @@
         // Load current/next session automatically
         async function loadCurrentSession() {
             try {
-                const response = await fetch(`${API_BASE}/api/facial-recognition/sessions/current`);
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/sessions/current`);
                 const data = await response.json();
 
                 if (data.ok && data.session) {
@@ -730,7 +731,7 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/api/facial-recognition/attendance/save-one`, {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/attendance/save-one`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -768,7 +769,7 @@
             if (!moduleId) return;
 
             try {
-                const response = await fetch(`${API_BASE}/api/facial-recognition/attendance/today?module_id=${moduleId}`);
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/attendance/today?module_id=${moduleId}`);
                 const data = await response.json();
 
                 if (data.ok && data.students && data.students.length > 0) {
@@ -796,7 +797,7 @@
             if (!timetableId) return;
 
             try {
-                const response = await fetch(`${API_BASE}/api/facial-recognition/attendance/session?timetable_id=${timetableId}`);
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/attendance/session?timetable_id=${timetableId}`);
                 const data = await response.json();
 
                 if (data.ok && data.students && data.students.length > 0) {
@@ -831,7 +832,7 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/api/facial-recognition/attendance/reset`, {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/attendance/reset`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -911,7 +912,7 @@
         // Check server status
         async function checkServerStatus() {
             try {
-                const response = await fetch(`${API_BASE}/health`);
+                const response = await fetch(`${window.API_BASE}/health`);
                 const data = await response.json();
 
                 if (data.status === 'ok') {
@@ -930,7 +931,7 @@
         // Start camera
         async function startCamera() {
             try {
-                const response = await fetch(`${API_BASE}/api/facial-recognition/camera/start`, {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/camera/start`, {
                     method: 'POST'
                 });
                 const data = await response.json();
@@ -941,7 +942,7 @@
 
                     // Start video feed
                     const videoFeed = document.getElementById('videoFeed');
-                    videoFeed.src = `${API_BASE}/api/facial-recognition/camera/feed?t=${Date.now()}`;
+                    videoFeed.src = `${window.API_BASE}/api/facial-recognition/camera/feed?t=${Date.now()}`;
                     videoFeed.style.display = 'block';
                     document.getElementById('cameraPlaceholder').style.display = 'none';
 
@@ -961,7 +962,7 @@
                     await stopScanning();
                 }
 
-                const response = await fetch(`${API_BASE}/api/facial-recognition/camera/stop`, {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/camera/stop`, {
                     method: 'POST'
                 });
                 const data = await response.json();
@@ -988,7 +989,7 @@
         // Start scanning
         async function startScanning() {
             try {
-                const response = await fetch(`${API_BASE}/api/facial-recognition/scanning/start`, {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/scanning/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1019,7 +1020,7 @@
         // Stop scanning
         async function stopScanning() {
             try {
-                const response = await fetch(`${API_BASE}/api/facial-recognition/scanning/stop`, {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/scanning/stop`, {
                     method: 'POST'
                 });
                 const data = await response.json();
@@ -1044,7 +1045,7 @@
         // Refresh faces
         async function refreshFaces() {
             try {
-                const response = await fetch(`${API_BASE}/api/facial-recognition/faces/refresh`, {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/faces/refresh`, {
                     method: 'POST'
                 });
                 const data = await response.json();
@@ -1068,7 +1069,7 @@
         // Load session data
         async function loadSessionData() {
             try {
-                const response = await fetch(`${API_BASE}/api/facial-recognition/session`);
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/session`);
                 const data = await response.json();
 
                 if (data.ok && data.session) {
