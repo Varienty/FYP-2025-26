@@ -1,0 +1,1248 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facial Recognition Attendance - Live Camera</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../../common/config.js"></script>
+    <script src="../../common/auth.js"></script>
+    
+    <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
+    <!-- Face API for face detection and recognition -->
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#1e3a8a',
+                        'primary-blue-dark': '#1e40af'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f7fafc;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 2200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+        }
+
+        .btn-info {
+            background: #4299e1;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #3182ce;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+        }
+
+        .camera-section {
+            background: #f7fafc;
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #e6fffa;
+            color: #234e52;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #38b2ac;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-indicator.offline .status-dot {
+            background: #e53e3e;
+            animation: none;
+        }
+
+        .camera-feed {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #1a202c;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        #videoFeed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #a0aec0;
+            font-size: 18px;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .camera-controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .camera-controls .btn {
+            flex: 1;
+            justify-content: center;
+            min-width: 140px;
+        }
+
+        .attendance-section {
+            background: #f7fafc;
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .attendance-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .attendance-card h3 {
+            font-size: 20px;
+            color: #2d3748;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .attendance-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-label {
+            font-size: 16px;
+            color: #718096;
+        }
+
+        .info-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .recognized-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .recognized-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .recognized-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .recognized-list::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 10px;
+        }
+
+        .student-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 4px solid #48bb78;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .student-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 20px;
+        }
+
+        .student-info {
+            flex: 1;
+        }
+
+        .student-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 4px;
+        }
+
+        .student-id {
+            font-size: 15px;
+            color: #718096;
+            margin-bottom: 6px;
+        }
+
+        .student-metrics {
+            display: flex;
+            gap: 15px;
+        }
+
+        .metric {
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .metric-label {
+            color: #a0aec0;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            background: #ef4444;
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            animation: pulse-badge 2s infinite;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes pulse-badge {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .upcoming-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #a0aec0;
+        }
+
+        .empty-state-icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+
+        .empty-state-text {
+            font-size: 18px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            display: none;
+            align-items: center;
+            gap: 12px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification.success {
+            border-left: 4px solid #48bb78;
+        }
+
+        .notification.error {
+            border-left: 4px solid #f56565;
+        }
+
+        .notification.show {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+    <!-- Enhanced Navigation Bar -->
+    <nav class="bg-gradient-to-r from-primary-blue to-primary-blue-dark text-white shadow-xl" style="position: fixed; top: 0; left: 0; right: 0; z-index: 9999;">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo and Brand -->
+                <div class="flex items-center space-x-3">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                    <span class="text-xl font-bold">System Admin</span>
+                </div>
+
+                <!-- Navigation Links -->
+                <div class="hidden md:flex items-center space-x-1">
+                    <a href="dashboard.html" class="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 font-semibold transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                        </svg>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="facial_recognition.html" class="flex items-center space-x-2 px-4 py-2 rounded-lg bg-white bg-opacity-20 font-semibold transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                        <span>Recognition</span>
+                    </a>
+                    <a href="policy_config.html" class="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 font-semibold transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span>Policies</span>
+                    </a>
+                    <a href="hardware_monitor.html" class="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 font-semibold transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                        </svg>
+                        <span>Hardware</span>
+                    </a>
+                    <a href="permissions_management.html" class="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 font-semibold transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                        <span>Permissions</span>
+                    </a>
+                </div>
+
+                <!-- Logout Button -->
+                <button id="btnLogoutNav" class="flex items-center space-x-2 bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-semibold transition shadow-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                    </svg>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Add padding to account for fixed nav -->
+    <div style="padding-top: 76px;">
+    <div class="container">
+        <div class="header">
+            <h1>
+                📹 Student Facial Recognition
+            </h1>
+            <div class="header-actions">
+                <span id="serverStatus" class="status-indicator offline">
+                    <span class="status-dot"></span>
+                    Server Offline
+                </span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Camera Section -->
+            <div class="camera-section">
+                <div class="section-title">
+                    🎥 Live Camera Feed
+                </div>
+
+                <div class="camera-feed">
+                    <img id="videoFeed" style="display:none;" alt="Camera Feed">
+                    <div id="cameraPlaceholder" class="camera-placeholder">
+                        📷 Camera Inactive - Click "Start Camera" to begin
+                    </div>
+                    <div class="camera-overlay">
+                        <span id="cameraStatus">Camera Inactive</span>
+                    </div>
+                </div>
+
+                <div class="camera-controls">
+                    <button id="btnStartCamera" class="btn btn-primary" onclick="startCamera()">
+                        ▶ Start Camera
+                    </button>
+                    <button id="btnStopCamera" class="btn btn-danger" onclick="stopCamera()" disabled>
+                        ⏹ Stop Camera
+                    </button>
+                    <button id="btnStartScanning" class="btn btn-success" onclick="startScanning()" disabled>
+                        🔍 Start Scanning
+                    </button>
+                    <button id="btnRefreshFaces" class="btn btn-info" onclick="refreshFaces()">
+                        🔄 Refresh Faces
+                    </button>
+                </div>
+            </div>
+
+            <!-- Attendance Section -->
+            <div class="attendance-section">
+                <div class="section-title">
+                    📋 Today's Attendance
+                    <span id="liveBadge" style="display: none;"></span>
+                </div>
+
+                <div class="attendance-card">
+                    <h3>📅 Session Information</h3>
+                    <div class="attendance-info">
+                        <div class="info-item" style="grid-column: 1 / -1;">
+                            <span class="info-label">📚 Module:</span>
+                            <span class="info-value" id="sessionClass">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">📆 Date:</span>
+                            <span class="info-value" id="sessionDate">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">🕐 Time:</span>
+                            <span class="info-value" id="sessionTime">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">🏫 Room:</span>
+                            <span class="info-value" id="sessionRoom">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">👥 Enrolled:</span>
+                            <span class="info-value" id="enrolledCount">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="attendance-card">
+                    <h3>Students Attendance ✅ (<span id="recognizedCount">0</span>)</h3>
+                    <div id="recognizedList" class="recognized-list">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">👤</div>
+                            <div class="empty-state-text">No attendance records yet today<br>Start scanning to mark attendance</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification">
+        <span id="notificationText"></span>
+    </div>
+
+    <script>
+        // API_BASE is already defined in config.js (loaded above)
+        // Do NOT redefine it here - use window.API_BASE instead
+        
+        let cameraActive = false;
+        let scanningActive = false;
+        let recognizedStudents = [];
+        let updateInterval = null;
+        let sessionCheckInterval = null;
+        let currentSessionId = null;
+        let currentTimetableId = null; // Track timetable ID instead of session ID
+        let currentSession = null;
+        let savedStudentIds = new Set(); // Track students who've been saved
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Clear any stale data on page load
+            recognizedStudents = [];
+            savedStudentIds.clear();
+
+            checkServerStatus();
+            loadCurrentSession();
+
+            // Check for session updates every 30 seconds
+            sessionCheckInterval = setInterval(loadCurrentSession, 30000);
+        });
+
+        // Clean up when page is closed or refreshed
+        window.addEventListener('beforeunload', async (event) => {
+            if (cameraActive) {
+                // Stop camera before leaving
+                try {
+                    await fetch(`${window.API_BASE}/api/facial-recognition/camera/stop`, {
+                        method: 'POST',
+                        keepalive: true // Ensure request completes even as page unloads
+                    });
+                    console.log('Camera stopped on page unload');
+                } catch (error) {
+                    console.error('Error stopping camera on unload:', error);
+                }
+            }
+        });
+
+        // Load current/next session automatically
+        async function loadCurrentSession() {
+            try {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/sessions/current`);
+                const data = await response.json();
+
+                if (data.ok && data.session) {
+                    const newSessionId = data.session.session_id;
+
+                    // Check if session has changed
+                    if (currentSessionId && newSessionId !== currentSessionId) {
+                        console.log(`Session changed from ${currentSessionId} to ${newSessionId} - clearing recognized students`);
+
+                        // Clear recognized students for new session
+                        recognizedStudents = [];
+                        savedStudentIds.clear();
+
+                        // Update the UI to show empty list
+                        const recognizedList = document.getElementById('recognizedList');
+                        const recognizedCount = document.getElementById('recognizedCount');
+                        recognizedCount.textContent = '0';
+                        recognizedList.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">👤</div>
+                                <div class="empty-state-text">No attendance records yet<br>Start scanning to mark attendance</div>
+                            </div>
+                        `;
+                    }
+
+                    currentSession = data.session;
+                    currentSessionId = newSessionId;
+                    currentTimetableId = data.session.timetable_id; // Store timetable ID
+                    updateSessionUI(data.session, true); // Update metadata on session load
+
+                    // Load existing attendance for THIS SESSION from database
+                    if (currentTimetableId) {
+                        loadSessionAttendance(currentTimetableId);
+                    }
+
+                    // Update live badge
+                    const liveBadge = document.getElementById('liveBadge');
+                    if (data.session.is_live) {
+                        liveBadge.innerHTML = '<span class="live-badge"><span class="live-dot"></span>LIVE</span>';
+                        liveBadge.style.display = 'inline';
+
+                        // Auto-start camera and scanning if class is live
+                        if (!cameraActive && !scanningActive) {
+                            console.log('Class is LIVE - Auto-starting camera and scanning...');
+                            setTimeout(async () => {
+                                await startCamera();
+                                setTimeout(async () => {
+                                    await startScanning();
+                                }, 1000); // Wait 1s after camera starts
+                            }, 500); // Small delay to ensure UI is ready
+                        }
+                    } else {
+                        liveBadge.innerHTML = '<span class="upcoming-badge">UPCOMING</span>';
+                        liveBadge.style.display = 'inline';
+                    }
+                } else {
+                    // No sessions today
+                    document.getElementById('liveBadge').style.display = 'none';
+                    console.log('No sessions scheduled for today');
+                }
+            } catch (error) {
+                console.error('Error loading current session:', error);
+            }
+        }
+
+        // Auto-save attendance for newly recognized student
+        async function autoSaveAttendance(student) {
+            if (!currentTimetableId || !currentSession?.module_id || savedStudentIds.has(student.student_id)) {
+                console.log('Cannot save attendance:', { currentTimetableId, module_id: currentSession?.module_id, already_saved: savedStudentIds.has(student.student_id) });
+                return; // Already saved or no session
+            }
+
+            try {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/attendance/save-one`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        student_id: student.student_id,
+                        timetable_id: currentTimetableId,
+                        module_id: currentSession.module_id,
+                        confidence: student.confidence
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.ok) {
+                    savedStudentIds.add(student.student_id);
+                    const actualStatus = data.status || 'present';
+                    console.log(`✓ Attendance saved for ${student.name} - Status: ${actualStatus}`);
+
+                    // Update the student card with the actual status from database
+                    updateStudentCardStatus(student.student_id, actualStatus);
+
+                    // Force UI refresh to show the new status
+                    setTimeout(() => {
+                        updateStudentCardStatus(student.student_id, actualStatus);
+                    }, 100);
+                } else {
+                    console.error('Failed to save attendance:', data.error);
+                }
+            } catch (error) {
+                console.error('Error saving attendance:', error);
+            }
+        }
+
+        // Load today's attendance for the current class
+        async function loadTodayAttendance(moduleId) {
+            if (!moduleId) return;
+
+            try {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/attendance/today?module_id=${moduleId}`);
+                const data = await response.json();
+
+                if (data.ok && data.students && data.students.length > 0) {
+                    console.log(`Loaded ${data.students.length} existing attendance record(s)`);
+
+                    // Add to recognized students and saved IDs
+                    data.students.forEach(student => {
+                        savedStudentIds.add(student.student_id);
+                        // Only add if not already in the list
+                        if (!recognizedStudents.find(s => s.student_id === student.student_id)) {
+                            recognizedStudents.push(student);
+                        }
+                    });
+
+                    // Update the UI
+                    updateRecognizedStudentsList();
+                }
+            } catch (error) {
+                console.error('Error loading today\'s attendance:', error);
+            }
+        }
+
+        // Load attendance for the current session (by timetable_id)
+        async function loadSessionAttendance(timetableId) {
+            if (!timetableId) return;
+
+            try {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/attendance/session?timetable_id=${timetableId}`);
+                const data = await response.json();
+
+                if (data.ok && data.students && data.students.length > 0) {
+                    console.log(`Loaded ${data.students.length} student(s) from database for this session`);
+
+                    // Add to recognized students and mark as saved
+                    data.students.forEach(student => {
+                        savedStudentIds.add(student.student_id);
+                        // Only add if not already in the list
+                        if (!recognizedStudents.find(s => s.student_id === student.student_id)) {
+                            recognizedStudents.push(student);
+                        }
+                    });
+
+                    // Update the UI
+                    updateRecognizedStudentsList();
+                }
+            } catch (error) {
+                console.error('Error loading session attendance:', error);
+            }
+        }
+
+        // Reset today's attendance (for testing)
+        async function resetAttendance() {
+            if (!currentSession || !currentSession.module_id) {
+                showNotification('No active session to reset', 'error');
+                return;
+            }
+
+            if (!confirm('⚠️ Are you sure you want to delete all attendance records for today? This cannot be undone!')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/attendance/reset`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        module_id: currentSession.module_id
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.ok) {
+                    // Clear local state
+                    recognizedStudents = [];
+                    savedStudentIds.clear();
+                    updateRecognizedStudentsList();
+
+                    showNotification('Attendance reset successfully', 'success');
+                } else {
+                    showNotification('Failed to reset attendance: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error resetting attendance: ' + error.message, 'error');
+            }
+        }
+
+        // Update recognized students list UI
+        function updateRecognizedStudentsList() {
+            const recognizedList = document.getElementById('recognizedList');
+            const recognizedCount = document.getElementById('recognizedCount');
+
+            recognizedCount.textContent = recognizedStudents.length;
+
+            if (recognizedStudents.length > 0) {
+                recognizedList.innerHTML = recognizedStudents.map(student => {
+                    const isMarked = savedStudentIds.has(student.student_id);
+
+                    // Determine status badge based on student.status
+                    const status = student.status || 'present';
+                    let statusBadge = '';
+
+                    if (status === 'present') {
+                        statusBadge = '<div class="status-badge" style="background: #48bb78; color: white;">✓ Present</div>';
+                    } else if (status === 'late') {
+                        statusBadge = '<div class="status-badge" style="background: #ed8936; color: white;">⏰ Late</div>';
+                    } else if (status === 'absent') {
+                        statusBadge = '<div class="status-badge" style="background: #f56565; color: white;">✗ Absent</div>';
+                    }
+
+                    return `
+                        <div class="student-card" data-student-id="${student.student_id}">
+                            <div class="student-avatar">${student.name.charAt(0)}</div>
+                            <div class="student-info">
+                                <div class="student-name">${student.name}</div>
+                                <div class="student-id">${student.student_id}</div>
+                                <div class="student-metrics">
+                                    <span class="metric">
+                                        <span class="metric-label">Conf:</span> ${student.confidence.toFixed(1)}%
+                                    </span>
+                                    <span class="metric">
+                                        <span class="metric-label">Live:</span> ${student.liveness.toFixed(1)}%
+                                    </span>
+                                </div>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                recognizedList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">👤</div>
+                        <div class="empty-state-text">No attendance records yet today<br>Start scanning to mark attendance</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Check server status
+        async function checkServerStatus() {
+            try {
+                const response = await fetch(`${window.API_BASE}/health`);
+                const data = await response.json();
+
+                if (data.status === 'ok') {
+                    const statusEl = document.getElementById('serverStatus');
+                    statusEl.classList.remove('offline');
+                    statusEl.innerHTML = `
+                        <span class="status-dot"></span>
+                        Server Online (${data.known_faces} faces loaded)
+                    `;
+                }
+            } catch (error) {
+                console.error('Server status check failed:', error);
+            }
+        }
+
+        // Start camera
+        async function startCamera() {
+            try {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/camera/start`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.ok) {
+                    cameraActive = true;
+                    updateCameraUI();
+
+                    // Start video feed
+                    const videoFeed = document.getElementById('videoFeed');
+                    videoFeed.src = `${window.API_BASE}/api/facial-recognition/camera/feed?t=${Date.now()}`;
+                    videoFeed.style.display = 'block';
+                    document.getElementById('cameraPlaceholder').style.display = 'none';
+
+                    showNotification('Camera started successfully', 'success');
+                } else {
+                    // Show helpful message if facial recognition is not available
+                    const errorMsg = data.error || 'Failed to start camera';
+                    if (errorMsg.includes('not available')) {
+                        showNotification('⚠️ ' + errorMsg + ' - This feature requires OpenCV and camera hardware setup.', 'warning');
+                    } else {
+                        showNotification('Failed to start camera: ' + errorMsg, 'error');
+                    }
+                }
+            } catch (error) {
+                showNotification('Error starting camera: ' + error.message, 'error');
+            }
+        }
+
+        // Stop camera
+        async function stopCamera() {
+            try {
+                if (scanningActive) {
+                    await stopScanning();
+                }
+
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/camera/stop`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.ok) {
+                    cameraActive = false;
+                    updateCameraUI();
+
+                    // Hide video feed
+                    const videoFeed = document.getElementById('videoFeed');
+                    videoFeed.style.display = 'none';
+                    videoFeed.src = '';
+                    document.getElementById('cameraPlaceholder').style.display = 'flex';
+
+                    showNotification('Camera stopped', 'success');
+                } else {
+                    showNotification('Failed to stop camera: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error stopping camera: ' + error.message, 'error');
+            }
+        }
+
+        // Start scanning
+        async function startScanning() {
+            try {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/scanning/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        date: new Date().toISOString().split('T')[0],
+                        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                        room: 'Demo Room',
+                        enrolled_count: 0
+                    })
+                });
+                const data = await response.json();
+
+                if (data.ok) {
+                    scanningActive = true;
+                    updateCameraUI();
+
+                    // Start polling for updates
+                    updateInterval = setInterval(loadSessionData, 2000);
+
+                    showNotification('Scanning started - Recognition active', 'success');
+                } else {
+                    showNotification('Failed to start scanning: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error starting scanning: ' + error.message, 'error');
+            }
+        }
+
+        // Stop scanning
+        async function stopScanning() {
+            try {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/scanning/stop`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.ok) {
+                    scanningActive = false;
+                    updateCameraUI();
+
+                    // Stop polling
+                    if (updateInterval) {
+                        clearInterval(updateInterval);
+                        updateInterval = null;
+                    }
+
+                    showNotification('Scanning stopped', 'success');
+                }
+            } catch (error) {
+                console.error('Error stopping scanning:', error);
+            }
+        }
+
+        // Refresh faces
+        async function refreshFaces() {
+            try {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/faces/refresh`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.ok) {
+                    showNotification(`Face refresh started - ${data.count} currently loaded`, 'success');
+                    checkServerStatus();
+
+                    // Wait 2 seconds then check server status again
+                    setTimeout(() => {
+                        checkServerStatus();
+                    }, 2000);
+                } else {
+                    showNotification('Failed to refresh faces: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error refreshing faces: ' + error.message, 'error');
+            }
+        }
+
+        // Load session data
+        async function loadSessionData() {
+            try {
+                const response = await fetch(`${window.API_BASE}/api/facial-recognition/session`);
+                const data = await response.json();
+
+                if (data.ok && data.session) {
+                    // During polling, don't update session metadata (class, date, time, room)
+                    // Only update recognized students list
+                    updateSessionUI(data.session, false);
+                }
+            } catch (error) {
+                console.error('Error loading session data:', error);
+            }
+        }
+
+        // Update session UI (metadata only - class, date, time, room, enrolled)
+        function updateSessionUI(session, updateMetadata = true) {
+            // Only update session metadata if requested (don't update during polling)
+            if (updateMetadata) {
+                const moduleName = session.module_code && session.module_name
+                    ? `${session.module_code} - ${session.module_name}`
+                    : '-';
+
+                document.getElementById('sessionClass').textContent = moduleName;
+                document.getElementById('sessionDate').textContent = session.date || '-';
+                document.getElementById('sessionTime').textContent = session.time ? `${session.time} - ${session.end_time || ''}` : '-';
+                document.getElementById('sessionRoom').textContent = session.room || '-';
+                document.getElementById('enrolledCount').textContent = session.enrolled_count || '-';
+            }
+
+            // Always update recognized students list
+            const recognizedList = document.getElementById('recognizedList');
+            const recognizedCount = document.getElementById('recognizedCount');
+
+            // Merge live detections with existing database records (if any)
+            if (session.recognized_students && session.recognized_students.length > 0) {
+                session.recognized_students.forEach(student => {
+                    const existingStudent = recognizedStudents.find(s => s.student_id === student.student_id);
+
+                    if (!existingStudent) {
+                        // New student detected - add to list and save
+                        recognizedStudents.push(student);
+                        autoSaveAttendance(student);
+                    } else {
+                        // Update existing student's confidence if higher
+                        if (student.confidence > existingStudent.confidence) {
+                            existingStudent.confidence = student.confidence;
+                            existingStudent.liveness = student.liveness;
+                        }
+                        // Always update status from database
+                        if (student.status) {
+                            existingStudent.status = student.status;
+                        }
+                    }
+                });
+            }
+
+            // Always display all recognized students (database + live)
+            recognizedCount.textContent = recognizedStudents.length;
+
+            if (recognizedStudents.length > 0) {
+                recognizedList.innerHTML = recognizedStudents.map(student => {
+                    const isMarked = savedStudentIds.has(student.student_id);
+
+                    // Determine status badge based on student.status
+                    const status = student.status || 'present';
+                    let statusBadge = '';
+
+                    if (status === 'present') {
+                        statusBadge = '<div class="status-badge" style="background: #48bb78; color: white;">✓ Present</div>';
+                    } else if (status === 'late') {
+                        statusBadge = '<div class="status-badge" style="background: #ed8936; color: white;">⏰ Late</div>';
+                    } else if (status === 'absent') {
+                        statusBadge = '<div class="status-badge" style="background: #f56565; color: white;">✗ Absent</div>';
+                    }
+
+                    return `
+                        <div class="student-card" data-student-id="${student.student_id}">
+                            <div class="student-avatar">${student.name.charAt(0)}</div>
+                            <div class="student-info">
+                                <div class="student-name">${student.name}</div>
+                                <div class="student-id">${student.student_id}</div>
+                                <div class="student-metrics">
+                                    <span class="metric">
+                                        <span class="metric-label">Conf:</span> ${student.confidence.toFixed(1)}%
+                                    </span>
+                                    <span class="metric">
+                                        <span class="metric-label">Live:</span> ${student.liveness.toFixed(1)}%
+                                    </span>
+                                </div>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                recognizedList.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">No students detected yet</div>';
+            }
+        }
+
+        // Update student card status
+        function updateStudentCardStatus(studentId, status) {
+            const card = document.querySelector(`[data-student-id="${studentId}"]`);
+            if (card) {
+                const badge = card.querySelector('.status-badge');
+                if (badge) {
+                    if (status === 'present') {
+                        badge.style.background = '#48bb78';
+                        badge.style.color = 'white';
+                        badge.textContent = '✓ Present';
+                    } else if (status === 'late') {
+                        badge.style.background = '#ed8936';
+                        badge.style.color = 'white';
+                        badge.textContent = '⏰ Late';
+                    } else if (status === 'absent') {
+                        badge.style.background = '#f56565';
+                        badge.style.color = 'white';
+                        badge.textContent = '✗ Absent';
+                    }
+                }
+            }
+        }
+
+        // Update camera UI
+        function updateCameraUI() {
+            const btnStartCamera = document.getElementById('btnStartCamera');
+            const btnStopCamera = document.getElementById('btnStopCamera');
+            const btnStartScanning = document.getElementById('btnStartScanning');
+            const cameraStatus = document.getElementById('cameraStatus');
+
+            btnStartCamera.disabled = cameraActive;
+            btnStopCamera.disabled = !cameraActive;
+            btnStartScanning.disabled = !cameraActive;
+            btnStartScanning.textContent = scanningActive ? '⏸ Stop Scanning' : '🔍 Start Scanning';
+            btnStartScanning.onclick = scanningActive ? stopScanning : startScanning;
+
+            if (scanningActive) {
+                cameraStatus.textContent = 'Scanning Active - Recognition Enabled';
+            } else if (cameraActive) {
+                cameraStatus.textContent = 'Camera Active - Ready';
+            } else {
+                cameraStatus.textContent = 'Camera Inactive';
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+
+            notificationText.textContent = message;
+            notification.moduleName = `notification ${type} show`;
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Logout handler for navigation bar
+        document.getElementById('btnLogoutNav').addEventListener('click', function() {
+            logout();
+        });
+    </script>
+
+    </div> <!-- Close wrapper div for fixed nav padding -->
+</body>
+</html>

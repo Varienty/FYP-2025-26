@@ -1223,6 +1223,42 @@ def facial_recognition_timetable_all():
         if conn:
             conn.close()
 
+@app.route('/api/facial-recognition/identify', methods=['POST'])
+def facial_recognition_identify():
+    """Identify student from face image - Returns student name and ID"""
+    try:
+        data = request.get_json()
+        image_data = data.get('image')
+        confidence = data.get('confidence', 0.5)
+        
+        if not image_data:
+            return jsonify({'ok': False, 'error': 'No image provided'}), 400
+        
+        # For now, return mock student data
+        # In production, this would use a face matching algorithm against stored embeddings
+        mock_students = [
+            {'student_id': 'S001', 'name': 'John Doe', 'confidence': 0.92},
+            {'student_id': 'S002', 'name': 'Jane Smith', 'confidence': 0.88},
+            {'student_id': 'S003', 'name': 'Alice Johnson', 'confidence': 0.85},
+        ]
+        
+        # Return a random student for demo (in production, match against face embeddings)
+        import random
+        if confidence > 0.7:
+            student = random.choice(mock_students)
+            return jsonify({
+                'ok': True,
+                'student': student
+            }), 200
+        else:
+            return jsonify({
+                'ok': False,
+                'error': 'Face confidence too low',
+                'confidence': confidence
+            }), 400
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
 # ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
