@@ -8,8 +8,8 @@
     <script src="../../common/config.js"></script>
     <script src="../../common/auth.js"></script>
     
-    <!-- TensorFlow.js for AI -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
+    <!-- TensorFlow.js for AI (face-api.js 0.22.2 is compatible with tfjs 3.x) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0"></script>
     <!-- Face API for face detection and landmarks -->
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     
@@ -469,8 +469,9 @@
             canvas = document.getElementById('canvas');
             ctx = canvas.getContext('2d');
 
-            // Wait for TensorFlow.js to be ready
+            // Set TF backend and wait for TensorFlow.js to be ready
             try {
+                await tf.setBackend('webgl');
                 await tf.ready();
                 console.log('✓ TensorFlow.js ready');
             } catch (error) {
@@ -623,7 +624,10 @@
                     
                     // Detect faces
                     const detections = await faceapi
-                        .detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions())
+                        .detectAllFaces(
+                            canvas,
+                            new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 })
+                        )
                         .withFaceLandmarks()
                         .withFaceDescriptors();
 
