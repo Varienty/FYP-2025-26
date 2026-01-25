@@ -14,6 +14,8 @@ from datetime import datetime, date, timedelta
 import threading
 import time
 from typing import Dict, List, Optional, Tuple
+import mysql.connector
+from mysql.connector import errors as mysql_errors
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
@@ -243,9 +245,32 @@ class FaceDatabase:
         self.face_recognizer = face_recognizer
         self.known_faces: Dict[str, Dict] = {}
 
+    def _ensure_face_images_table(self) -> None:
+        """Create face_images table if it does not exist to prevent init failures."""
+        try:
+            db_utils.execute(
+                """
+                CREATE TABLE IF NOT EXISTS face_images (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    student_id INT NOT NULL,
+                    image_data LONGBLOB NOT NULL,
+                    image_number INT DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    KEY idx_student_id (student_id),
+                    CONSTRAINT fk_face_images_student FOREIGN KEY (student_id)
+                        REFERENCES students(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+                """
+            )
+        except Exception as e:
+            print(f"✗ Failed to ensure face_images table exists: {e}")
+
     def load_from_database(self) -> bool:
         """Load all student face encodings from database"""
         try:
+            # Ensure the face_images table exists so initialization does not crash on fresh DBs
+            self._ensure_face_images_table()
+
             # Get all active students
             students = db_utils.query_all(
                 """SELECT id, student_id, first_name, last_name
@@ -271,13 +296,28 @@ class FaceDatabase:
                 print(f"\n[{student_id}] {first_name} {last_name}")
 
                 # Get face images from database
-                face_images = db_utils.query_all(
-                    """SELECT image_data, image_number
-                       FROM face_images
-                       WHERE student_id = %s
-                       ORDER BY image_number""",
-                    (student_internal_id,)
-                )
+                try:
+                    face_images = db_utils.query_all(
+                        """SELECT image_data, image_number
+                               FROM face_images
+                               WHERE student_id = %s
+                               ORDER BY image_number""",
+                        (student_internal_id,)
+                    )
+                except mysql_errors.ProgrammingError as e:
+                    if getattr(e, 'errno', None) == 1146:
+                        print("  ⚠ face_images table missing, creating now...")
+                        self._ensure_face_images_table()
+                        face_images = db_utils.query_all(
+                            """SELECT image_data, image_number
+                                   FROM face_images
+                                   WHERE student_id = %s
+                                   ORDER BY image_number""",
+                            (student_internal_id,)
+                        )
+                    else:
+                        print(f"  ✗ DB error loading face_images: {e}")
+                        continue
 
                 if not face_images:
                     failed_students.append(f"{student_id} ({first_name} {last_name}) - no face images in database")
