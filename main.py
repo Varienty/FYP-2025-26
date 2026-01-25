@@ -1564,20 +1564,12 @@ def facial_recognition_identify():
         
         # Check if facial recognition is available
         if not FACIAL_RECOGNITION_AVAILABLE or not all([face_detector, face_recognizer, student_faces]):
-            print("⚠ Facial recognition not initialized, returning demo data")
-            # Fallback: return demo student if confidence is high
-            if confidence_threshold > 0.7:
-                demo_students = [
-                    {'student_id': 'S9001', 'name': 'Alice Tester'},
-                    {'student_id': 'S9002', 'name': 'Bob Tester'},
-                ]
-                import random
-                return jsonify({
-                    'ok': True,
-                    'student': random.choice(demo_students),
-                    'message': 'Demo mode - facial recognition not available'
-                }), 200
-            return jsonify({'ok': False, 'error': 'Facial recognition not available'}), 503
+            print("⚠ Facial recognition not initialized, returning graceful response")
+            return jsonify({
+                'ok': False,
+                'error': 'Facial recognition not initialized on server',
+                'faces_found': 0
+            }), 200
         
         # Check if OpenCV is available
         if cv2 is None or np is None:
