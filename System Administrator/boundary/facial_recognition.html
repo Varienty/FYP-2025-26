@@ -147,6 +147,15 @@
             background: #e53e3e;
         }
 
+        .btn-secondary {
+            background: #718096;
+            color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #4a5568;
+        }
+
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -354,7 +363,6 @@
             <h1>
                 📷 Facial Recognition Attendance
             </h1>
-            <button class="btn btn-danger" onclick="logout()">Logout</button>
         </div>
 
         <!-- Main Content -->
@@ -390,6 +398,9 @@
                     </button>
                     <button class="btn btn-success" id="btnStartScanning" onclick="toggleScanning()" disabled>
                         🔍 Start Scanning
+                    </button>
+                    <button class="btn btn-secondary" id="btnRefresh" onclick="refreshModels()">
+                        🔄 Refresh Models
                     </button>
                 </div>
 
@@ -692,6 +703,43 @@
             notif.style.display = 'block';
             setTimeout(() => notif.style.display = 'none', 3000);
         }
+
+        // Refresh face detection models
+        async function refreshModels() {
+            try {
+                showNotification('Reloading face models...', 'info');
+                const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                ]);
+                modelsLoaded = true;
+                showNotification('Face models reloaded ✓', 'info');
+            } catch (error) {
+                console.error('Error reloading models:', error);
+                showNotification('Error reloading face models', 'error');
+            }
+        }
+
+        // Logout handler
+        function logout() {
+            // Call logout function from auth.js
+            if (window.logout && typeof window.logout === 'function') {
+                window.logout();
+            } else {
+                // Fallback: redirect to login
+                window.location.href = 'admin_login.html';
+            }
+        }
+
+        // Wire up logout buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            const logoutButtons = document.querySelectorAll('#btnLogoutNav, [onclick="logout()"]');
+            logoutButtons.forEach(btn => {
+                btn.addEventListener('click', logout);
+            });
+        });
     </script>
 </body>
 </html>
