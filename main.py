@@ -10,6 +10,7 @@ Usage:
 
 import os
 import json
+from datetime import date, datetime
 from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
 from common.db_utils import get_connection
@@ -1157,35 +1158,249 @@ def facial_recognition_faces_list():
     """Stub: List recognized faces"""
     return jsonify({'ok': True, 'faces': []}), 200
 
+def _get_current_timetable():
+    """Get today's first active timetable entry with class metadata."""
+    conn = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Determine today's weekday name (e.g., 'Monday')
+        from datetime import datetime
+        today = datetime.now()
+        weekday = today.strftime('%A')
+
+        cursor.execute(
+            """
+            SELECT t.id AS timetable_id,
+                   t.class_id,
+                   c.class_code,
+                   c.class_name,
+                   c.description,
+                   t.day_of_week,
+                   t.start_time,
+                   t.end_time,
+                   t.room,
+                   c.lecturer_id,
+                   l.first_name AS lecturer_first,
+                   l.last_name  AS lecturer_last,
+                   (
+                       SELECT COUNT(*)
+                       FROM student_enrollments se
+                       WHERE se.class_id = t.class_id
+                   ) AS enrolled_count
+            FROM timetable t
+            JOIN classes c ON t.class_id = c.id
+            LEFT JOIN lecturers l ON c.lecturer_id = l.id
+            WHERE t.is_active = 1 AND c.is_active = 1 AND t.day_of_week = %s
+            ORDER BY t.start_time ASC
+            LIMIT 1
+            """,
+            (weekday,),
+        )
+        row = cursor.fetchone()
+        cursor.close()
+        return row
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.route('/api/facial-recognition/session', methods=['GET'])
 def facial_recognition_session():
-    """Stub: Get current session"""
-    return jsonify({'ok': False, 'error': 'No active session'}), 404
+    """Return current session snapshot used by polling UI."""
+    session = _get_current_timetable()
+    if not session:
+        return jsonify({'ok': False, 'error': 'No active session today'}), 404
+
+    return jsonify({
+        'ok': True,
+        'session': {
+            'session_id': session['timetable_id'],
+            'timetable_id': session['timetable_id'],
+            'class_id': session['class_id'],
+            'module_id': session['class_id'],  # Align with frontend expectations
+            'module_code': session['class_code'],
+            'module_name': session['class_name'],
+            'date': str(date.today()),
+            'time': str(session['start_time']) if session['start_time'] else None,
+            'end_time': str(session['end_time']) if session['end_time'] else None,
+            'room': session['room'],
+            'enrolled_count': int(session['enrolled_count'] or 0),
+            'recognized_students': [],
+            'is_live': True,
+        },
+    }), 200
+
 
 @app.route('/api/facial-recognition/sessions/current', methods=['GET'])
 def facial_recognition_sessions_current():
-    """Stub: Get current session info"""
-    return jsonify({'ok': False, 'message': 'No sessions scheduled for today'}), 404
+    """Return the current (or next) timetable session for today."""
+    session = _get_current_timetable()
+    if not session:
+        return jsonify({'ok': False, 'message': 'No sessions scheduled for today'}), 404
+
+    return jsonify({
+        'ok': True,
+        'session': {
+            'session_id': session['timetable_id'],
+            'timetable_id': session['timetable_id'],
+            'class_id': session['class_id'],
+            'module_id': session['class_id'],
+            'module_code': session['class_code'],
+            'module_name': session['class_name'],
+            'date': str(date.today()),
+            'time': str(session['start_time']) if session['start_time'] else None,
+            'end_time': str(session['end_time']) if session['end_time'] else None,
+            'room': session['room'],
+            'enrolled_count': int(session['enrolled_count'] or 0),
+            'is_live': True,
+        },
+    }), 200
+
 
 @app.route('/api/facial-recognition/attendance/save-one', methods=['POST'])
 def facial_recognition_attendance_save_one():
-    """Stub: Save attendance record"""
-    return jsonify({'ok': False, 'error': 'Facial recognition not available'}), 503
+    """Persist a single attendance record linked to timetable/class."""
+    conn = None
+    try:
+        data = request.get_json() or {}
+        student_code = data.get('student_id')
+        timetable_id = data.get('timetable_id') or data.get('session_id')
+        class_id = data.get('class_id') or data.get('module_id')
+        confidence = data.get('confidence')
+
+        if not student_code or not class_id:
+            return jsonify({'ok': False, 'error': 'student_id and class_id are required'}), 400
+
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT id FROM students WHERE student_id = %s", (student_code,))
+        student_row = cursor.fetchone()
+        if not student_row:
+            return jsonify({'ok': False, 'error': 'Student not found'}), 404
+
+        student_pk = student_row['id']
+
+        # Ensure class exists
+        cursor.execute("SELECT id FROM classes WHERE id = %s", (class_id,))
+        class_row = cursor.fetchone()
+        if not class_row:
+            return jsonify({'ok': False, 'error': 'Class not found'}), 404
+
+        # Insert attendance
+        cursor.execute(
+            """
+            INSERT INTO attendance (student_id, class_id, timetable_id, status, face_confidence, is_manual)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (student_pk, class_id, timetable_id, 'present', confidence, False),
+        )
+        conn.commit()
+
+        return jsonify({'ok': True, 'status': 'present'}), 200
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
 
 @app.route('/api/facial-recognition/attendance/today', methods=['GET'])
 def facial_recognition_attendance_today():
-    """Stub: Get today's attendance"""
-    return jsonify({'ok': True, 'attendance': []}), 200
+    """Return today's attendance for a given class (class_id query param)."""
+    class_id = request.args.get('class_id', type=int)
+    if not class_id:
+        return jsonify({'ok': False, 'error': 'class_id is required'}), 400
+
+    conn = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT a.id, s.student_id, CONCAT(s.first_name, ' ', s.last_name) AS name,
+                   a.status, a.face_confidence, a.check_in_time
+            FROM attendance a
+            JOIN students s ON a.student_id = s.id
+            WHERE a.class_id = %s AND DATE(a.check_in_time) = CURDATE()
+            ORDER BY a.check_in_time DESC
+            """,
+            (class_id,),
+        )
+        rows = cursor.fetchall()
+        cursor.close()
+
+        return jsonify({'ok': True, 'students': rows}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
 
 @app.route('/api/facial-recognition/attendance/reset', methods=['POST'])
 def facial_recognition_attendance_reset():
-    """Stub: Reset attendance session"""
-    return jsonify({'ok': False, 'error': 'Facial recognition not available'}), 503
+    """Delete today's attendance for a class (for testing)."""
+    data = request.get_json() or {}
+    class_id = data.get('class_id') or data.get('module_id')
+    if not class_id:
+        return jsonify({'ok': False, 'error': 'class_id is required'}), 400
+
+    conn = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM attendance WHERE class_id = %s AND DATE(check_in_time) = CURDATE()",
+            (class_id,),
+        )
+        conn.commit()
+        cursor.close()
+        return jsonify({'ok': True}), 200
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
 
 @app.route('/api/facial-recognition/attendance/session', methods=['GET'])
 def facial_recognition_attendance_session():
-    """Stub: Get session attendance"""
-    return jsonify({'ok': True, 'attendance': []}), 200
+    """Return attendance for a specific timetable session."""
+    timetable_id = request.args.get('timetable_id', type=int)
+    if not timetable_id:
+        return jsonify({'ok': False, 'error': 'timetable_id is required'}), 400
+
+    conn = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT a.id, s.student_id, CONCAT(s.first_name, ' ', s.last_name) AS name,
+                   a.status, a.face_confidence, a.check_in_time
+            FROM attendance a
+            JOIN students s ON a.student_id = s.id
+            WHERE a.timetable_id = %s
+            ORDER BY a.check_in_time DESC
+            """,
+            (timetable_id,),
+        )
+        rows = cursor.fetchall()
+        cursor.close()
+
+        return jsonify({'ok': True, 'students': rows}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/facial-recognition/timetable/all', methods=['GET'])
 def facial_recognition_timetable_all():

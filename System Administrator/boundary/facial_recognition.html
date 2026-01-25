@@ -423,7 +423,8 @@
 
             // Load face detection models
             try {
-                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights/';
+                // Use hosted model weights to avoid CDN manifest 404s
+                const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
                 await Promise.all([
                     faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
@@ -583,7 +584,9 @@
                     body: JSON.stringify({
                         student_id: student.student_id,
                         session_id: sessionInfo?.session_id,
-                        confidence: 0.85
+                        timetable_id: sessionInfo?.timetable_id,
+                        class_id: sessionInfo?.class_id || sessionInfo?.module_id,
+                        confidence: student.confidence || 0.85
                     })
                 });
 
@@ -598,8 +601,8 @@
             try {
                 const response = await fetch(`${window.API_BASE}/api/facial-recognition/sessions/current`);
                 const data = await response.json();
-                
-                if (data.session) {
+
+                if (data.ok && data.session) {
                     sessionInfo = data.session;
                     document.getElementById('sessionDate').textContent = 
                         new Date(sessionInfo.date).toLocaleDateString() || '-';
@@ -607,6 +610,10 @@
                         sessionInfo.module_name || '-';
                     document.getElementById('sessionEnrolled').textContent = 
                         sessionInfo.enrolled_count || '-';
+                } else {
+                    document.getElementById('sessionClass').textContent = 'No session today';
+                    document.getElementById('sessionEnrolled').textContent = '-';
+                    document.getElementById('sessionDate').textContent = '-';
                 }
             } catch (error) {
                 console.error('Error loading session:', error);
