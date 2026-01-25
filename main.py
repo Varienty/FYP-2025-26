@@ -1112,6 +1112,118 @@ def serve_common_page(filename):
     return jsonify({'error': 'Not found'}), 404
 
 # ============================================================================
+# FACIAL RECOGNITION STUB ENDPOINTS (For System Admin page compatibility)
+# ============================================================================
+# These endpoints provide graceful degradation for the facial recognition UI
+# Full facial recognition requires OpenCV and camera hardware setup on the server
+
+@app.route('/api/facial-recognition/camera/start', methods=['POST'])
+def facial_recognition_camera_start():
+    """Stub: Start camera feed"""
+    return jsonify({'ok': False, 'error': 'Facial recognition not available in this deployment. System requires OpenCV and camera hardware setup.'}), 503
+
+@app.route('/api/facial-recognition/camera/stop', methods=['POST'])
+def facial_recognition_camera_stop():
+    """Stub: Stop camera feed"""
+    return jsonify({'ok': True, 'message': 'Camera stopped'}), 200
+
+@app.route('/api/facial-recognition/camera/status', methods=['GET'])
+def facial_recognition_camera_status():
+    """Stub: Get camera status"""
+    return jsonify({'ok': True, 'status': 'offline', 'message': 'Camera not available'}), 200
+
+@app.route('/api/facial-recognition/camera/feed')
+def facial_recognition_camera_feed():
+    """Stub: Camera feed stream"""
+    return jsonify({'error': 'Facial recognition not available'}), 503
+
+@app.route('/api/facial-recognition/scanning/start', methods=['POST'])
+def facial_recognition_scanning_start():
+    """Stub: Start scanning"""
+    return jsonify({'ok': False, 'error': 'Facial recognition not available'}), 503
+
+@app.route('/api/facial-recognition/scanning/stop', methods=['POST'])
+def facial_recognition_scanning_stop():
+    """Stub: Stop scanning"""
+    return jsonify({'ok': True, 'message': 'Scanning stopped'}), 200
+
+@app.route('/api/facial-recognition/faces/refresh', methods=['POST'])
+def facial_recognition_faces_refresh():
+    """Stub: Refresh face database"""
+    return jsonify({'ok': False, 'error': 'Facial recognition not available'}), 503
+
+@app.route('/api/facial-recognition/faces/list', methods=['GET'])
+def facial_recognition_faces_list():
+    """Stub: List recognized faces"""
+    return jsonify({'ok': True, 'faces': []}), 200
+
+@app.route('/api/facial-recognition/session', methods=['GET'])
+def facial_recognition_session():
+    """Stub: Get current session"""
+    return jsonify({'ok': False, 'error': 'No active session'}), 404
+
+@app.route('/api/facial-recognition/sessions/current', methods=['GET'])
+def facial_recognition_sessions_current():
+    """Stub: Get current session info"""
+    return jsonify({'ok': False, 'message': 'No sessions scheduled for today'}), 404
+
+@app.route('/api/facial-recognition/attendance/save-one', methods=['POST'])
+def facial_recognition_attendance_save_one():
+    """Stub: Save attendance record"""
+    return jsonify({'ok': False, 'error': 'Facial recognition not available'}), 503
+
+@app.route('/api/facial-recognition/attendance/today', methods=['GET'])
+def facial_recognition_attendance_today():
+    """Stub: Get today's attendance"""
+    return jsonify({'ok': True, 'attendance': []}), 200
+
+@app.route('/api/facial-recognition/attendance/reset', methods=['POST'])
+def facial_recognition_attendance_reset():
+    """Stub: Reset attendance session"""
+    return jsonify({'ok': False, 'error': 'Facial recognition not available'}), 503
+
+@app.route('/api/facial-recognition/attendance/session', methods=['GET'])
+def facial_recognition_attendance_session():
+    """Stub: Get session attendance"""
+    return jsonify({'ok': True, 'attendance': []}), 200
+
+@app.route('/api/facial-recognition/timetable/all', methods=['GET'])
+def facial_recognition_timetable_all():
+    """Stub: Get all timetable entries"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT t.id, t.class_id, c.class_code, c.class_name, 
+                   t.day_of_week, t.start_time, t.end_time, t.room
+            FROM timetable t
+            JOIN classes c ON t.class_id = c.id
+            ORDER BY t.day_of_week, t.start_time
+        """)
+        timetables = cursor.fetchall()
+        cursor.close()
+        
+        result = []
+        for t in timetables:
+            result.append({
+                'id': t['id'],
+                'classId': t['class_id'],
+                'classCode': t['class_code'],
+                'className': t['class_name'],
+                'dayOfWeek': t['day_of_week'],
+                'startTime': str(t['start_time']) if t['start_time'] else None,
+                'endTime': str(t['end_time']) if t['end_time'] else None,
+                'room': t['room']
+            })
+        
+        return jsonify({'ok': True, 'timetables': result}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+# ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
 

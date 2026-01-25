@@ -948,7 +948,13 @@
 
                     showNotification('Camera started successfully', 'success');
                 } else {
-                    showNotification('Failed to start camera: ' + data.error, 'error');
+                    // Show helpful message if facial recognition is not available
+                    const errorMsg = data.error || 'Failed to start camera';
+                    if (errorMsg.includes('not available')) {
+                        showNotification('⚠️ ' + errorMsg + ' - This feature requires OpenCV and camera hardware setup.', 'warning');
+                    } else {
+                        showNotification('Failed to start camera: ' + errorMsg, 'error');
+                    }
                 }
             } catch (error) {
                 showNotification('Error starting camera: ' + error.message, 'error');
