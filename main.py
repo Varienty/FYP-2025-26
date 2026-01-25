@@ -10,11 +10,25 @@ Usage:
 
 import os
 import json
+import sys
 from datetime import date, datetime
 from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
 from common.db_utils import get_connection
 import bcrypt
+import base64
+import cv2
+import numpy as np
+
+# Add System Administrator controller path for facial recognition
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'System Administrator', 'controller'))
+
+try:
+    from facial_recognition_controller import FaceDetector, FaceRecognizer, StudentFaceDatabase
+    FACIAL_RECOGNITION_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠ Facial recognition not available: {e}")
+    FACIAL_RECOGNITION_AVAILABLE = False
 
 # Create Flask app with static and template folders
 app = Flask(__name__, 
@@ -23,6 +37,51 @@ app = Flask(__name__,
             template_folder='common')
 CORS(app, origins="*", supports_credentials=True, allow_headers="*", 
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"])
+
+# ============================================================================
+# FACIAL RECOGNITION INITIALIZATION
+# ============================================================================
+
+# Initialize facial recognition system on startup
+face_detector = None
+face_recognizer = None
+student_faces = None
+
+def init_facial_recognition():
+    """Initialize facial recognition system"""
+    global face_detector, face_recognizer, student_faces
+    
+    if not FACIAL_RECOGNITION_AVAILABLE:
+        print("⚠ Facial recognition module not available")
+        return False
+    
+    try:
+        model_dir = os.path.join(os.path.dirname(__file__), 'System Administrator', 'controller', 'models')
+        
+        # Initialize face detector
+        face_detection_model = os.path.join(model_dir, 'face_detection_yunet_2023mar.onnx')
+        if os.path.exists(face_detection_model):
+            face_detector = FaceDetector(face_detection_model)
+            print("✓ Face detector initialized")
+        
+        # Initialize face recognizer
+        face_recognition_model = os.path.join(model_dir, 'face_recognition_sface_2021dec.onnx')
+        if os.path.exists(face_recognition_model):
+            face_recognizer = FaceRecognizer(face_recognition_model)
+            print("✓ Face recognizer initialized")
+        
+        # Initialize student face database
+        if face_recognizer:
+            student_faces = StudentFaceDatabase(face_recognizer)
+            if student_faces.load_from_database():
+                print(f"✓ Loaded {student_faces.get_count()} student faces from database")
+            else:
+                print("⚠ Failed to load student faces from database")
+        
+        return face_detector and face_recognizer and student_faces
+    except Exception as e:
+        print(f"✗ Error initializing facial recognition: {e}")
+        return False
 
 # ============================================================================
 # HEALTH CHECK & STATUS ENDPOINTS
@@ -1442,38 +1501,105 @@ def facial_recognition_timetable_all():
 
 @app.route('/api/facial-recognition/identify', methods=['POST'])
 def facial_recognition_identify():
-    """Identify student from face image - Returns student name and ID"""
+    """Identify student from face image using AI facial recognition"""
     try:
         data = request.get_json()
         image_data = data.get('image')
-        confidence = data.get('confidence', 0.5)
+        confidence_threshold = data.get('confidence', 0.5)
         
         if not image_data:
             return jsonify({'ok': False, 'error': 'No image provided'}), 400
         
-        # For now, return mock student data
-        # In production, this would use a face matching algorithm against stored embeddings
-        mock_students = [
-            {'student_id': 'S001', 'name': 'John Doe', 'confidence': 0.92},
-            {'student_id': 'S002', 'name': 'Jane Smith', 'confidence': 0.88},
-            {'student_id': 'S003', 'name': 'Alice Johnson', 'confidence': 0.85},
-        ]
+        # Check if facial recognition is available
+        if not FACIAL_RECOGNITION_AVAILABLE or not all([face_detector, face_recognizer, student_faces]):
+            print("⚠ Facial recognition not initialized, returning demo data")
+            # Fallback: return demo student if confidence is high
+            if confidence_threshold > 0.7:
+                demo_students = [
+                    {'student_id': 'S9001', 'name': 'Alice Tester'},
+                    {'student_id': 'S9002', 'name': 'Bob Tester'},
+                ]
+                import random
+                return jsonify({
+                    'ok': True,
+                    'student': random.choice(demo_students),
+                    'message': 'Demo mode - facial recognition not available'
+                }), 200
+            return jsonify({'ok': False, 'error': 'Facial recognition not available'}), 503
         
-        # Return a random student for demo (in production, match against face embeddings)
-        import random
-        if confidence > 0.7:
-            student = random.choice(mock_students)
+        # Decode base64 image
+        try:
+            # Remove data URL prefix if present
+            if ',' in image_data:
+                image_data = image_data.split(',')[1]
+            
+            image_bytes = base64.b64decode(image_data)
+            nparr = np.frombuffer(image_bytes, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+            if frame is None:
+                return jsonify({'ok': False, 'error': 'Invalid image data'}), 400
+        except Exception as e:
+            print(f"Error decoding image: {e}")
+            return jsonify({'ok': False, 'error': 'Failed to decode image'}), 400
+        
+        # Detect faces in the image
+        faces = face_detector.detect(frame)
+        
+        if faces is None or len(faces) == 0:
+            return jsonify({
+                'ok': False,
+                'error': 'No face detected in image',
+                'faces_found': 0
+            }), 400
+        
+        # Get the largest/clearest face
+        largest_face = max(faces, key=lambda f: f[2] * f[3])  # By area (width * height)
+        x, y, w, h = map(int, largest_face[:4])
+        
+        # Extract face region
+        face_roi = frame[y:y+h, x:x+w]
+        
+        if face_roi.size == 0:
+            return jsonify({
+                'ok': False,
+                'error': 'Could not extract face region'
+            }), 400
+        
+        # Get face feature/encoding
+        face_feature = face_recognizer.get_feature(face_roi)
+        
+        if face_feature is None:
+            return jsonify({
+                'ok': False,
+                'error': 'Could not extract face features'
+            }), 400
+        
+        # Find matching student
+        match = student_faces.find_match(face_feature)
+        
+        if match:
+            student_id, name, similarity = match
             return jsonify({
                 'ok': True,
-                'student': student
+                'student': {
+                    'student_id': student_id,
+                    'name': name
+                },
+                'confidence': float(similarity),
+                'message': 'Face matched successfully'
             }), 200
         else:
             return jsonify({
                 'ok': False,
-                'error': 'Face confidence too low',
-                'confidence': confidence
+                'error': 'No matching student found',
+                'message': 'Face not recognized in database'
             }), 400
+    
     except Exception as e:
+        print(f"Error in facial recognition identify: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 # ============================================================================
@@ -1481,6 +1607,10 @@ def facial_recognition_identify():
 # ============================================================================
 
 if __name__ == '__main__':
+    # Initialize facial recognition system
+    print("Initializing facial recognition system...")
+    init_facial_recognition()
+    
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_ENV', 'production') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug)
