@@ -24,7 +24,7 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'System Administrator', 'controller'))
 
 try:
-    from facial_recognition_controller import FaceDetector, FaceRecognizer, StudentFaceDatabase
+    from facial_recognition_controller import FaceDetector, FaceRecognizer, FaceDatabase
     FACIAL_RECOGNITION_AVAILABLE = True
     print("✓ Facial recognition modules imported successfully")
 except Exception as e:
@@ -33,7 +33,7 @@ except Exception as e:
     # Define dummy classes to prevent crashes
     class FaceDetector: pass
     class FaceRecognizer: pass
-    class StudentFaceDatabase: pass
+    class FaceDatabase: pass
 
 # Create Flask app with static and template folders
 app = Flask(__name__, 
@@ -93,7 +93,7 @@ def init_facial_recognition():
         # Initialize student face database
         try:
             if face_recognizer:
-                student_faces = StudentFaceDatabase(face_recognizer)
+                student_faces = FaceDatabase(face_recognizer)
                 loaded_count = student_faces.load_from_database()
                 if loaded_count:
                     print(f"✓ Loaded {student_faces.get_count()} student faces from database")
