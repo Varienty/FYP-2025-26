@@ -120,14 +120,12 @@ def health():
     """Health endpoint for load balancer"""
     return jsonify({'status': 'ok', 'service': 'attendance-system'}), 200
 
-# Ensure facial recognition initializes when the app starts under WSGI (e.g., gunicorn/EB)
-@app.before_first_request
-def _init_fr_on_first_request():
-    try:
-        print("[Startup] Initializing facial recognition on first request...")
-        init_facial_recognition()
-    except Exception as e:
-        print(f"⚠ Facial recognition init error: {e}")
+# Ensure facial recognition initializes under WSGI (e.g., gunicorn/EB)
+try:
+    print("[Startup] Initializing facial recognition (import time)...")
+    init_facial_recognition()
+except Exception as e:
+    print(f"⚠ Facial recognition init error: {e}")
 
 @app.route('/health/db', methods=['GET'])
 def health_db():
