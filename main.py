@@ -26,9 +26,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'System Administrator
 try:
     from facial_recognition_controller import FaceDetector, FaceRecognizer, StudentFaceDatabase
     FACIAL_RECOGNITION_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠ Facial recognition not available: {e}")
+    print("✓ Facial recognition modules imported successfully")
+except Exception as e:
+    print(f"⚠ Facial recognition not available: {type(e).__name__}: {e}")
     FACIAL_RECOGNITION_AVAILABLE = False
+    # Define dummy classes to prevent crashes
+    class FaceDetector: pass
+    class FaceRecognizer: pass
+    class StudentFaceDatabase: pass
 
 # Create Flask app with static and template folders
 app = Flask(__name__, 
