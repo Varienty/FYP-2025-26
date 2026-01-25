@@ -562,14 +562,6 @@
                 console.error('Full error:', error);
             }
         }
-                } else if (error.name === 'NotFoundError') {
-                    msg = '❌ No Camera Found';
-                    details = 'No camera device detected. Please connect a webcam or enable your built-in camera.';
-                }
-                
-                showNotification(`${msg}: ${details}`, 'error');
-            }
-        }
 
         // Stop camera
         function stopCamera() {
