@@ -8,10 +8,7 @@
     <script src="../../common/config.js"></script>
     <script src="../../common/auth.js"></script>
     
-    <!-- TensorFlow.js for AI (face-api.js 0.22.2 is compatible with tfjs 3.x) -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0"></script>
-    <!-- Face API for face detection and landmarks -->
-    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <!-- Client-side TFJS/face-api removed: using server-side detection instead -->
     
     <style>
         * {
@@ -461,47 +458,14 @@
         let markedStudents = new Map();
         let detectionInterval = null;
         let sessionInfo = null;
-        let modelsLoaded = false;
+        // Server-side detection; no client models required
+        const SCAN_INTERVAL_MS = 1000;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             video = document.getElementById('video');
             canvas = document.getElementById('canvas');
             ctx = canvas.getContext('2d');
-
-            // Set TF backend and wait for TensorFlow.js to be ready
-            try {
-                await tf.setBackend('webgl');
-                await tf.ready();
-                console.log('✓ TensorFlow.js ready');
-            } catch (error) {
-                console.error('TensorFlow.js failed to initialize:', error);
-                showNotification('TensorFlow.js initialization failed', 'error');
-                return;
-            }
-
-            // Load face detection models
-            try {
-                console.log('Loading face detection models...');
-                const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
-                
-                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-                console.log('✓ TinyFaceDetector loaded');
-                
-                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-                console.log('✓ FaceLandmark68Net loaded');
-                
-                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-                console.log('✓ FaceRecognitionNet loaded');
-                
-                modelsLoaded = true;
-                showNotification('Face detection models loaded ✓', 'info');
-                console.log('All models loaded successfully');
-            } catch (error) {
-                console.error('Error loading models:', error);
-                showNotification('Error loading face models: ' + error.message, 'error');
-                modelsLoaded = false;
-            }
 
             loadSessionInfo();
         });
@@ -602,86 +566,54 @@
                 return;
             }
             
-            if (!modelsLoaded) {
-                showNotification('❌ Face detection models not loaded. Try refreshing the page.', 'error');
-                return;
-            }
-            
             scanningActive = true;
-            canvas.style.display = 'block';
+            // Canvas overlay not needed for server-side detection
+            canvas.style.display = 'none';
             updateUI();
-            showNotification('Face detection started ✓', 'info');
-            console.log('Starting face detection loop...');
+            showNotification('Server-side detection started ✓', 'info');
+            console.log('Starting server-side detection loop...');
+
+            // Use an offscreen canvas for frame capture
+            const grabCanvas = document.createElement('canvas');
+            const grabCtx = grabCanvas.getContext('2d');
 
             detectionInterval = setInterval(async () => {
                 if (!scanningActive) return;
 
                 try {
-                    // Draw video frame to canvas
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    
-                    console.log('Detecting faces...', canvas.width, 'x', canvas.height);
-                    
-                    // Detect faces
-                    const detections = await faceapi
-                        .detectAllFaces(
-                            canvas,
-                            new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 })
-                        )
-                        .withFaceLandmarks()
-                        .withFaceDescriptors();
+                    // Capture full frame and send to backend for detection
+                    grabCanvas.width = video.videoWidth;
+                    grabCanvas.height = video.videoHeight;
+                    grabCtx.drawImage(video, 0, 0, grabCanvas.width, grabCanvas.height);
 
-                    console.log('Detected', detections.length, 'faces');
-                    
-                    // Update counter
-                    document.getElementById('faceCount').textContent = detections.length;
-                    
-                    if (detections.length > 0) {
-                        document.getElementById('detectionInfo').textContent = 
-                            `${detections.length} face(s) detected - Processing...`;
-                        
-                        // Send largest face to backend
-                        const largest = detections.reduce((prev, curr) =>
-                            curr.detection.box.width > prev.detection.box.width ? curr : prev
-                        );
+                    // Update hint text while processing
+                    document.getElementById('detectionInfo').textContent = 'Processing frame...';
 
-                        const box = largest.detection.box;
-                        const faceCanvas = document.createElement('canvas');
-                        faceCanvas.width = box.width;
-                        faceCanvas.height = box.height;
-                        const faceCtx = faceCanvas.getContext('2d');
-                        faceCtx.drawImage(canvas, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
-                        
-                        // Try to identify
-                        try {
-                            const response = await fetch(`${window.API_BASE}/api/facial-recognition/identify`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    image: faceCanvas.toDataURL('image/jpeg'),
-                                    confidence: largest.detection.score
-                                })
-                            });
+                    const response = await fetch(`${window.API_BASE}/api/facial-recognition/identify`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            image: grabCanvas.toDataURL('image/jpeg', 0.8)
+                        })
+                    });
 
-                            const result = await response.json();
-                            if (result.student && !markedStudents.has(result.student.student_id)) {
-                                markedStudents.set(result.student.student_id, result.student);
-                                updateStudentsList();
-                                showNotification(`✓ ${result.student.name}`, 'info');
-                                
-                                // Mark attendance
-                                await markAttendance(result.student);
-                            }
-                        } catch (err) {
-                            console.error('Identification error:', err);
+                    const result = await response.json();
+                    if (result && result.student) {
+                        document.getElementById('detectionInfo').textContent = `Identified: ${result.student.name}`;
+                        if (!markedStudents.has(result.student.student_id)) {
+                            markedStudents.set(result.student.student_id, result.student);
+                            updateStudentsList();
+                            showNotification(`✓ ${result.student.name}`, 'info');
+                            await markAttendance(result.student);
                         }
                     } else {
-                        document.getElementById('detectionInfo').textContent = 'No faces detected - Point camera at student';
+                        document.getElementById('detectionInfo').textContent = 'No match yet...';
                     }
                 } catch (error) {
-                    console.error('Detection error:', error);
+                    console.error('Server detection error:', error);
+                    document.getElementById('detectionInfo').textContent = 'Detection error, retrying...';
                 }
-            }, 500);
+            }, SCAN_INTERVAL_MS);
         }
 
         // Stop scanning
@@ -692,7 +624,7 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             updateUI();
             document.getElementById('faceCounter').style.display = 'none';
-            showNotification('Face detection stopped', 'info');
+            showNotification('Detection stopped', 'info');
         }
 
         // Mark attendance via API
@@ -780,22 +712,9 @@
             setTimeout(() => notif.style.display = 'none', 3000);
         }
 
-        // Refresh face detection models
+        // Refresh action (server mode)
         async function refreshModels() {
-            try {
-                showNotification('Reloading face models...', 'info');
-                const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
-                await Promise.all([
-                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-                ]);
-                modelsLoaded = true;
-                showNotification('Face models reloaded ✓', 'info');
-            } catch (error) {
-                console.error('Error reloading models:', error);
-                showNotification('Error reloading face models', 'error');
-            }
+            showNotification('Server detection active. No client models to refresh.', 'info');
         }
 
         // Logout handler
