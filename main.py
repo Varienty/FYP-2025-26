@@ -104,7 +104,7 @@ def init_facial_recognition():
         except Exception as e:
             print(f"⚠ Failed to load student face database: {e}")
         
-        return face_detector and face_recognizer
+        return face_detector is not None and face_recognizer is not None
     except Exception as e:
         print(f"✗ Unexpected error initializing facial recognition: {e}")
         import traceback
@@ -119,6 +119,15 @@ def init_facial_recognition():
 def health():
     """Health endpoint for load balancer"""
     return jsonify({'status': 'ok', 'service': 'attendance-system'}), 200
+
+# Ensure facial recognition initializes when the app starts under WSGI (e.g., gunicorn/EB)
+@app.before_first_request
+def _init_fr_on_first_request():
+    try:
+        print("[Startup] Initializing facial recognition on first request...")
+        init_facial_recognition()
+    except Exception as e:
+        print(f"⚠ Facial recognition init error: {e}")
 
 @app.route('/health/db', methods=['GET'])
 def health_db():
@@ -1626,8 +1635,10 @@ def facial_recognition_identify():
                 'error': 'Could not extract face region'
             }), 400
         
-        # Get face feature/encoding
-        face_feature = face_recognizer.get_feature(face_roi)
+        # Get face feature/encoding using recognizer (use full frame + coords for better alignment)
+        # Build coords array [x, y, w, h] plus placeholders for landmarks if needed
+        face_coords = np.array([x, y, w, h, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.0], dtype=np.float32)
+        face_feature = face_recognizer.extract_features(frame, face_coords)
         
         if face_feature is None:
             return jsonify({
@@ -1636,7 +1647,8 @@ def facial_recognition_identify():
             }), 400
         
         # Find matching student
-        match = student_faces.find_match(face_feature)
+        # Use tuned thresholds from controller: threshold=0.25 for better matching
+        match = student_faces.find_match(face_feature, threshold=0.25, min_confidence_gap=0.02)
         
         if match:
             student_id, name, similarity = match
