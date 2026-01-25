@@ -57,35 +57,56 @@ def init_facial_recognition():
     global face_detector, face_recognizer, student_faces
     
     if not FACIAL_RECOGNITION_AVAILABLE:
-        print("⚠ Facial recognition module not available")
+        print("⚠ Facial recognition module not available - will use demo mode")
         return False
     
     try:
         model_dir = os.path.join(os.path.dirname(__file__), 'System Administrator', 'controller', 'models')
+        print(f"Looking for models in: {model_dir}")
+        
+        if not os.path.exists(model_dir):
+            print(f"⚠ Model directory not found: {model_dir}")
+            return False
         
         # Initialize face detector
         face_detection_model = os.path.join(model_dir, 'face_detection_yunet_2023mar.onnx')
-        if os.path.exists(face_detection_model):
-            face_detector = FaceDetector(face_detection_model)
-            print("✓ Face detector initialized")
+        try:
+            if os.path.exists(face_detection_model):
+                face_detector = FaceDetector(face_detection_model)
+                print("✓ Face detector initialized")
+            else:
+                print(f"⚠ Face detection model not found: {face_detection_model}")
+        except Exception as e:
+            print(f"⚠ Failed to initialize face detector: {e}")
         
         # Initialize face recognizer
         face_recognition_model = os.path.join(model_dir, 'face_recognition_sface_2021dec.onnx')
-        if os.path.exists(face_recognition_model):
-            face_recognizer = FaceRecognizer(face_recognition_model)
-            print("✓ Face recognizer initialized")
+        try:
+            if os.path.exists(face_recognition_model):
+                face_recognizer = FaceRecognizer(face_recognition_model)
+                print("✓ Face recognizer initialized")
+            else:
+                print(f"⚠ Face recognition model not found: {face_recognition_model}")
+        except Exception as e:
+            print(f"⚠ Failed to initialize face recognizer: {e}")
         
         # Initialize student face database
-        if face_recognizer:
-            student_faces = StudentFaceDatabase(face_recognizer)
-            if student_faces.load_from_database():
-                print(f"✓ Loaded {student_faces.get_count()} student faces from database")
-            else:
-                print("⚠ Failed to load student faces from database")
+        try:
+            if face_recognizer:
+                student_faces = StudentFaceDatabase(face_recognizer)
+                loaded_count = student_faces.load_from_database()
+                if loaded_count:
+                    print(f"✓ Loaded {student_faces.get_count()} student faces from database")
+                else:
+                    print("⚠ No student faces loaded from database (may be empty)")
+        except Exception as e:
+            print(f"⚠ Failed to load student face database: {e}")
         
-        return face_detector and face_recognizer and student_faces
+        return face_detector and face_recognizer
     except Exception as e:
-        print(f"✗ Error initializing facial recognition: {e}")
+        print(f"✗ Unexpected error initializing facial recognition: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 # ============================================================================
@@ -1612,12 +1633,18 @@ def facial_recognition_identify():
 # ============================================================================
 
 if __name__ == '__main__':
-    # Initialize facial recognition system
-    print("Initializing facial recognition system...")
-    init_facial_recognition()
+    # Initialize facial recognition system (optional - won't crash if it fails)
+    try:
+        print("\n" + "="*60)
+        print("Initializing facial recognition system...")
+        init_facial_recognition()
+        print("="*60 + "\n")
+    except Exception as e:
+        print(f"⚠ Facial recognition initialization error (continuing anyway): {e}")
     
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_ENV', 'production') == 'development'
+    print(f"Starting Flask app on port {port} (debug={debug})")
     app.run(host='0.0.0.0', port=port, debug=debug)
 
 
