@@ -469,20 +469,37 @@
             canvas = document.getElementById('canvas');
             ctx = canvas.getContext('2d');
 
+            // Wait for TensorFlow.js to be ready
+            try {
+                await tf.ready();
+                console.log('✓ TensorFlow.js ready');
+            } catch (error) {
+                console.error('TensorFlow.js failed to initialize:', error);
+                showNotification('TensorFlow.js initialization failed', 'error');
+                return;
+            }
+
             // Load face detection models
             try {
-                // Use hosted model weights to avoid CDN manifest 404s
+                console.log('Loading face detection models...');
                 const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
-                await Promise.all([
-                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-                ]);
+                
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                console.log('✓ TinyFaceDetector loaded');
+                
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                console.log('✓ FaceLandmark68Net loaded');
+                
+                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                console.log('✓ FaceRecognitionNet loaded');
+                
                 modelsLoaded = true;
-                showNotification('Face detection models loaded', 'info');
+                showNotification('Face detection models loaded ✓', 'info');
+                console.log('All models loaded successfully');
             } catch (error) {
                 console.error('Error loading models:', error);
-                showNotification('Error loading face models', 'error');
+                showNotification('Error loading face models: ' + error.message, 'error');
+                modelsLoaded = false;
             }
 
             loadSessionInfo();
@@ -579,24 +596,39 @@
 
         // Start face detection scanning
         async function startScanning() {
-            if (!cameraActive || !modelsLoaded) return;
+            if (!cameraActive) {
+                showNotification('❌ Start camera first!', 'error');
+                return;
+            }
+            
+            if (!modelsLoaded) {
+                showNotification('❌ Face detection models not loaded. Try refreshing the page.', 'error');
+                return;
+            }
             
             scanningActive = true;
             canvas.style.display = 'block';
             updateUI();
             showNotification('Face detection started ✓', 'info');
+            console.log('Starting face detection loop...');
 
             detectionInterval = setInterval(async () => {
                 if (!scanningActive) return;
 
                 try {
+                    // Draw video frame to canvas
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                     
+                    console.log('Detecting faces...', canvas.width, 'x', canvas.height);
+                    
+                    // Detect faces
                     const detections = await faceapi
                         .detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions())
                         .withFaceLandmarks()
                         .withFaceDescriptors();
 
+                    console.log('Detected', detections.length, 'faces');
+                    
                     // Update counter
                     document.getElementById('faceCount').textContent = detections.length;
                     
