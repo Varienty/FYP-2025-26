@@ -1159,7 +1159,7 @@ def facial_recognition_faces_list():
     return jsonify({'ok': True, 'faces': []}), 200
 
 def _get_current_timetable():
-    """Get today's first active timetable entry with class metadata."""
+    """Get today's first active timetable entry with module metadata."""
     conn = None
     try:
         conn = get_connection()
@@ -1173,26 +1173,22 @@ def _get_current_timetable():
         cursor.execute(
             """
             SELECT t.id AS timetable_id,
-                   t.class_id,
-                   c.class_code,
-                   c.class_name,
-                   c.description,
+                   t.module_id,
+                   m.module_code,
+                   m.module_name,
+                   m.description,
                    t.day_of_week,
                    t.start_time,
                    t.end_time,
                    t.room,
-                   c.lecturer_id,
-                   l.first_name AS lecturer_first,
-                   l.last_name  AS lecturer_last,
                    (
                        SELECT COUNT(*)
                        FROM student_enrollments se
-                       WHERE se.class_id = t.class_id
+                       WHERE se.module_id = t.module_id
                    ) AS enrolled_count
             FROM timetable t
-            JOIN classes c ON t.class_id = c.id
-            LEFT JOIN lecturers l ON c.lecturer_id = l.id
-            WHERE t.is_active = 1 AND c.is_active = 1 AND t.day_of_week = %s
+            JOIN modules m ON t.module_id = m.id
+            WHERE t.is_active = 1 AND m.is_active = 1 AND t.day_of_week = %s
             ORDER BY t.start_time ASC
             LIMIT 1
             """,
@@ -1221,10 +1217,10 @@ def facial_recognition_session():
         'session': {
             'session_id': session['timetable_id'],
             'timetable_id': session['timetable_id'],
-            'class_id': session['class_id'],
-            'module_id': session['class_id'],  # Align with frontend expectations
-            'module_code': session['class_code'],
-            'module_name': session['class_name'],
+            'module_id': session['module_id'],
+            'class_id': session['module_id'],  # Backward compatibility
+            'module_code': session['module_code'],
+            'module_name': session['module_name'],
             'date': str(date.today()),
             'time': str(session['start_time']) if session['start_time'] else None,
             'end_time': str(session['end_time']) if session['end_time'] else None,
@@ -1249,10 +1245,10 @@ def facial_recognition_sessions_current():
             'session': {
                 'session_id': session['timetable_id'],
                 'timetable_id': session['timetable_id'],
-                'class_id': session['class_id'],
-                'module_id': session['class_id'],
-                'module_code': session['class_code'],
-                'module_name': session['class_name'],
+                'module_id': session['module_id'],
+                'class_id': session['module_id'],  # Backward compatibility
+                'module_code': session['module_code'],
+                'module_name': session['module_name'],
                 'date': str(date.today()),
                 'time': str(session['start_time']) if session['start_time'] else None,
                 'end_time': str(session['end_time']) if session['end_time'] else None,
@@ -1267,17 +1263,17 @@ def facial_recognition_sessions_current():
 
 @app.route('/api/facial-recognition/attendance/save-one', methods=['POST'])
 def facial_recognition_attendance_save_one():
-    """Persist a single attendance record linked to timetable/class."""
+    """Persist a single attendance record linked to timetable/module."""
     conn = None
     try:
         data = request.get_json() or {}
         student_code = data.get('student_id')
         timetable_id = data.get('timetable_id') or data.get('session_id')
-        class_id = data.get('class_id') or data.get('module_id')
+        module_id = data.get('module_id') or data.get('class_id')
         confidence = data.get('confidence')
 
-        if not student_code or not class_id:
-            return jsonify({'ok': False, 'error': 'student_id and class_id are required'}), 400
+        if not student_code or not module_id:
+            return jsonify({'ok': False, 'error': 'student_id and module_id are required'}), 400
 
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
@@ -1289,19 +1285,19 @@ def facial_recognition_attendance_save_one():
 
         student_pk = student_row['id']
 
-        # Ensure class exists
-        cursor.execute("SELECT id FROM classes WHERE id = %s", (class_id,))
-        class_row = cursor.fetchone()
-        if not class_row:
-            return jsonify({'ok': False, 'error': 'Class not found'}), 404
+        # Ensure module exists
+        cursor.execute("SELECT id FROM modules WHERE id = %s", (module_id,))
+        module_row = cursor.fetchone()
+        if not module_row:
+            return jsonify({'ok': False, 'error': 'Module not found'}), 404
 
         # Insert attendance
         cursor.execute(
             """
-            INSERT INTO attendance (student_id, class_id, timetable_id, status, face_confidence, is_manual)
+            INSERT INTO attendance (student_id, module_id, timetable_id, status, face_confidence, is_manual)
             VALUES (%s, %s, %s, %s, %s, %s)
             """,
-            (student_pk, class_id, timetable_id, 'present', confidence, False),
+            (student_pk, module_id, timetable_id, 'present', confidence, False),
         )
         conn.commit()
 
