@@ -22,17 +22,31 @@ import bcrypt
 cv2 = None
 np = None
 
-# Add System Administrator controller path for facial recognition
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'System Administrator', 'controller'))
+# Try both path variants for facial recognition controller
+FACIAL_RECOGNITION_AVAILABLE = False
+FaceDetector = None
+FaceRecognizer = None
+FaceDatabase = None
 
-try:
-    from facial_recognition_controller import FaceDetector, FaceRecognizer, FaceDatabase
-    FACIAL_RECOGNITION_AVAILABLE = True
-    print("✓ Facial recognition modules imported successfully")
-except Exception as e:
-    print(f"⚠ Facial recognition not available: {type(e).__name__}: {e}")
-    FACIAL_RECOGNITION_AVAILABLE = False
-    # Define dummy classes to prevent crashes
+for path_variant in [
+    os.path.join(os.path.dirname(__file__), 'System Administrator', 'controller'),
+    os.path.join(os.path.dirname(__file__), 'System_Administrator', 'controller'),
+    os.path.join(os.path.dirname(__file__), 'system_administrator', 'controller'),
+]:
+    if os.path.exists(path_variant):
+        sys.path.insert(0, path_variant)
+        try:
+            from facial_recognition_controller import FaceDetector, FaceRecognizer, FaceDatabase
+            FACIAL_RECOGNITION_AVAILABLE = True
+            print(f"✓ Facial recognition modules imported from: {path_variant}")
+            break
+        except Exception as e:
+            print(f"⚠ Import failed for {path_variant}: {type(e).__name__}: {e}")
+            continue
+
+if not FACIAL_RECOGNITION_AVAILABLE:
+    print("⚠ Facial recognition not available - all path variants failed")
+    # Dummy classes to prevent crashes
     class FaceDetector: pass
     class FaceRecognizer: pass
     class FaceDatabase: pass
@@ -64,14 +78,28 @@ def init_facial_recognition():
     
     try:
         model_dir = os.path.join(os.path.dirname(__file__), 'System Administrator', 'controller', 'models')
-        print(f"Looking for models in: {model_dir}")
+        print(f"[FR-INIT] Looking for models in: {model_dir}")
+        print(f"[FR-INIT] Directory exists: {os.path.exists(model_dir)}")
         
         if not os.path.exists(model_dir):
-            print(f"⚠ Model directory not found: {model_dir}")
-            return False
+            print(f"[FR-INIT] Model directory not found, trying alternate paths...")
+            # Try alternate paths
+            for variant in ['System_Administrator', 'system_administrator', 'SystemAdministrator']:
+                alt_dir = os.path.join(os.path.dirname(__file__), variant, 'controller', 'models')
+                print(f"[FR-INIT] Trying: {alt_dir} - exists: {os.path.exists(alt_dir)}")
+                if os.path.exists(alt_dir):
+                    model_dir = alt_dir
+                    break
+            
+            if not os.path.exists(model_dir):
+                print(f"⚠ Model directory not found at any variant path")
+                return False
+        
+        print(f"[FR-INIT] Using model directory: {model_dir}")
         
         # Initialize face detector
         face_detection_model = os.path.join(model_dir, 'face_detection_yunet_2023mar.onnx')
+        print(f"[FR-INIT] Face detector model exists: {os.path.exists(face_detection_model)}")
         try:
             if os.path.exists(face_detection_model):
                 face_detector = FaceDetector(face_detection_model)
@@ -79,10 +107,13 @@ def init_facial_recognition():
             else:
                 print(f"⚠ Face detection model not found: {face_detection_model}")
         except Exception as e:
-            print(f"⚠ Failed to initialize face detector: {e}")
+            print(f"✗ Failed to initialize face detector: {e}")
+            import traceback
+            traceback.print_exc()
         
         # Initialize face recognizer
         face_recognition_model = os.path.join(model_dir, 'face_recognition_sface_2021dec.onnx')
+        print(f"[FR-INIT] Face recognizer model exists: {os.path.exists(face_recognition_model)}")
         try:
             if os.path.exists(face_recognition_model):
                 face_recognizer = FaceRecognizer(face_recognition_model)
@@ -90,11 +121,14 @@ def init_facial_recognition():
             else:
                 print(f"⚠ Face recognition model not found: {face_recognition_model}")
         except Exception as e:
-            print(f"⚠ Failed to initialize face recognizer: {e}")
+            print(f"✗ Failed to initialize face recognizer: {e}")
+            import traceback
+            traceback.print_exc()
         
         # Initialize student face database
         try:
             if face_recognizer:
+                print("[FR-INIT] Loading student faces from database...")
                 student_faces = FaceDatabase(face_recognizer)
                 loaded_count = student_faces.load_from_database()
                 if loaded_count:
@@ -102,7 +136,9 @@ def init_facial_recognition():
                 else:
                     print("⚠ No student faces loaded from database (may be empty)")
         except Exception as e:
-            print(f"⚠ Failed to load student face database: {e}")
+            print(f"✗ Failed to load student face database: {e}")
+            import traceback
+            traceback.print_exc()
         
         return face_detector is not None and face_recognizer is not None
     except Exception as e:
@@ -1564,11 +1600,17 @@ def facial_recognition_identify():
         
         # Check if facial recognition is available
         if not FACIAL_RECOGNITION_AVAILABLE or not all([face_detector, face_recognizer, student_faces]):
-            print("⚠ Facial recognition not initialized, returning graceful response")
+            print(f"[IDENTIFY] FR check - FACIAL_RECOGNITION_AVAILABLE={FACIAL_RECOGNITION_AVAILABLE}, detector={face_detector}, recognizer={face_recognizer}, student_faces={student_faces}")
             return jsonify({
                 'ok': False,
                 'error': 'Facial recognition not initialized on server',
-                'faces_found': 0
+                'faces_found': 0,
+                'debug': {
+                    'FR_AVAILABLE': FACIAL_RECOGNITION_AVAILABLE,
+                    'detector': 'loaded' if face_detector else 'None',
+                    'recognizer': 'loaded' if face_recognizer else 'None',
+                    'student_faces': f'loaded:{student_faces.get_count()}' if student_faces else 'None'
+                }
             }), 200
         
         # Check if OpenCV is available
@@ -1586,6 +1628,7 @@ def facial_recognition_identify():
                     'message': 'Demo mode - OpenCV not available'
                 }), 200
         
+        print("[IDENTIFY] Processing frame...")
         # Decode base64 image
         try:
             # Remove data URL prefix if present
@@ -1598,12 +1641,18 @@ def facial_recognition_identify():
             
             if frame is None:
                 return jsonify({'ok': False, 'error': 'Invalid image data'}), 400
+            
+            print(f"[IDENTIFY] Frame decoded: {frame.shape}")
         except Exception as e:
-            print(f"Error decoding image: {e}")
+            print(f"[IDENTIFY] Error decoding image: {e}")
+            import traceback
+            traceback.print_exc()
             return jsonify({'ok': False, 'error': 'Failed to decode image'}), 400
         
         # Detect faces in the image
+        print(f"[IDENTIFY] Detecting faces...")
         faces = face_detector.detect(frame)
+        print(f"[IDENTIFY] Faces detected: {len(faces) if faces else 0}")
         
         if faces is None or len(faces) == 0:
             return jsonify({
