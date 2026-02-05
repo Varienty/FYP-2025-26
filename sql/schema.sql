@@ -114,14 +114,15 @@ CREATE TABLE IF NOT EXISTS intake_periods (
   UNIQUE KEY unique_intake (intake_period, intake_year)
 );
 
--- Classes table
-CREATE TABLE IF NOT EXISTS classes (
+-- Modules table (renamed from classes)
+CREATE TABLE IF NOT EXISTS modules (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  class_code VARCHAR(20) UNIQUE NOT NULL,
-  class_name VARCHAR(100) NOT NULL,
+  module_code VARCHAR(20) UNIQUE NOT NULL,
+  module_name VARCHAR(100) NOT NULL,
   description TEXT,
   lecturer_id INT,
   academic_year VARCHAR(20),
+  term VARCHAR(20),
   semester VARCHAR(20),
   credits INT DEFAULT 3,
   is_active BOOLEAN DEFAULT TRUE,
@@ -132,25 +133,25 @@ CREATE TABLE IF NOT EXISTS classes (
 -- Timetable table
 CREATE TABLE IF NOT EXISTS timetable (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  class_id INT NOT NULL,
+  module_id INT NOT NULL,
   day_of_week ENUM('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday') NOT NULL,
   start_time TIME NOT NULL,
   end_time TIME NOT NULL,
   room VARCHAR(50),
   is_active BOOLEAN DEFAULT TRUE,
-  FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
+  FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE CASCADE
 );
 
 -- Student enrollments
 CREATE TABLE IF NOT EXISTS student_enrollments (
   id INT PRIMARY KEY AUTO_INCREMENT,
   student_id INT NOT NULL,
-  class_id INT NOT NULL,
+  module_id INT NOT NULL,
   enrollment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   status ENUM('active', 'dropped', 'completed') DEFAULT 'active',
   FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-  FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
-  UNIQUE KEY unique_enrollment (student_id, class_id)
+  FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_enrollment (student_id, module_id)
 );
 
 -- ==========================================
@@ -161,7 +162,7 @@ CREATE TABLE IF NOT EXISTS student_enrollments (
 CREATE TABLE IF NOT EXISTS attendance (
   id INT PRIMARY KEY AUTO_INCREMENT,
   student_id INT NOT NULL,
-  class_id INT NOT NULL,
+  module_id INT NOT NULL,
   timetable_id INT,
   check_in_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   status ENUM('present', 'late', 'absent', 'excused') DEFAULT 'present',
@@ -169,17 +170,18 @@ CREATE TABLE IF NOT EXISTS attendance (
   is_manual BOOLEAN DEFAULT FALSE,
   manually_edited_by INT,
   edit_reason TEXT,
+  class_id INT GENERATED ALWAYS AS (module_id) VIRTUAL,
   FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-  FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+  FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE CASCADE,
   FOREIGN KEY (timetable_id) REFERENCES timetable(id) ON DELETE SET NULL,
   INDEX idx_student_date (student_id, check_in_time),
-  INDEX idx_class_date (class_id, check_in_time)
+  INDEX idx_class_date (module_id, check_in_time)
 );
 
 -- Attendance sessions (for real-time monitoring - User Story #14, #17)
 CREATE TABLE IF NOT EXISTS attendance_sessions (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  class_id INT NOT NULL,
+  module_id INT NOT NULL,
   timetable_id INT,
   lecturer_id INT NOT NULL,
   session_date DATE NOT NULL,
@@ -190,10 +192,10 @@ CREATE TABLE IF NOT EXISTS attendance_sessions (
   present_count INT DEFAULT 0,
   late_count INT DEFAULT 0,
   absent_count INT DEFAULT 0,
-  FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+  FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE CASCADE,
   FOREIGN KEY (timetable_id) REFERENCES timetable(id) ON DELETE SET NULL,
   FOREIGN KEY (lecturer_id) REFERENCES lecturers(id) ON DELETE CASCADE,
-  INDEX idx_session_date (session_date, class_id)
+  INDEX idx_session_date (session_date, module_id)
 );
 
 -- Medical certificates
@@ -242,14 +244,14 @@ CREATE TABLE IF NOT EXISTS attendance_policies (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Apply policies to classes
-CREATE TABLE IF NOT EXISTS class_policies (
+-- Apply policies to modules
+CREATE TABLE IF NOT EXISTS module_policies (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  class_id INT NOT NULL,
+  module_id INT NOT NULL,
   policy_id INT NOT NULL,
-  FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+  FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE CASCADE,
   FOREIGN KEY (policy_id) REFERENCES attendance_policies(id) ON DELETE CASCADE,
-  UNIQUE KEY unique_class_policy (class_id, policy_id)
+  UNIQUE KEY unique_module_policy (module_id, policy_id)
 );
 
 -- ==========================================
@@ -365,14 +367,14 @@ INSERT INTO lecturers (lecturer_id, email, password, first_name, last_name, depa
 ('LEC002', 'jane.doe@university.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Jane', 'Doe', 'Computer Science'),
 ('LEC003', 'mike.johnson@university.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Mike', 'Johnson', 'Computer Science');
 
--- Sample Classes with Lecturer IDs
-INSERT INTO classes (class_code, class_name, description, lecturer_id, academic_year, semester) VALUES
+-- Sample Modules with Lecturer IDs
+INSERT INTO modules (module_code, module_name, description, lecturer_id, academic_year, semester) VALUES
 ('CS101', 'Introduction to Computer Science', 'Basic programming concepts', 1, '2024/2025', 'Semester 1'),
 ('CS201', 'Data Structures', 'Advanced data structures and algorithms', 2, '2024/2025', 'Semester 1'),
 ('CS301', 'Database Systems', 'Database design and management', 3, '2024/2025', 'Semester 1');
 
 -- Sample Timetable
-INSERT INTO timetable (class_id, day_of_week, start_time, end_time, room) VALUES
+INSERT INTO timetable (module_id, day_of_week, start_time, end_time, room) VALUES
 (1, 'Monday', '09:00:00', '11:00:00', 'Room 101'),
 (1, 'Wednesday', '09:00:00', '11:00:00', 'Room 101'),
 (2, 'Tuesday', '14:00:00', '16:00:00', 'Room 202'),
@@ -392,8 +394,8 @@ INSERT INTO attendance_policies (policy_name, grace_period_minutes, late_thresho
 ('University Default Policy', 10, 15, 75.00, 'university', TRUE),
 ('Computer Science Department Policy', 5, 10, 80.00, 'department', TRUE);
 
--- Apply policies to classes
-INSERT INTO class_policies (class_id, policy_id) VALUES
+-- Apply policies to modules
+INSERT INTO module_policies (module_id, policy_id) VALUES
 (1, 1),
 (2, 1),
 (3, 2);

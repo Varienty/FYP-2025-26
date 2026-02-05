@@ -15,6 +15,10 @@ ALTER TABLE `modules`
     CHANGE COLUMN `class_code` `module_code` VARCHAR(20) NOT NULL,
     CHANGE COLUMN `class_name` `module_name` VARCHAR(255) NOT NULL;
 
+-- Step 2b: Ensure term column exists (used by SSA controllers)
+ALTER TABLE `modules`
+    ADD COLUMN IF NOT EXISTS `term` VARCHAR(20) NULL AFTER `academic_year`;
+
 -- Step 3: Update foreign key column names in related tables
 
 -- Update timetable table
@@ -28,6 +32,10 @@ ALTER TABLE `student_enrollments`
 -- Update attendance table
 ALTER TABLE `attendance`
     CHANGE COLUMN `class_id` `module_id` INT(11) NOT NULL;
+
+-- Add generated class_id for backward compatibility (virtual column)
+ALTER TABLE `attendance`
+    ADD COLUMN IF NOT EXISTS `class_id` INT(11) GENERATED ALWAYS AS (`module_id`) VIRTUAL;
 
 -- Step 4: Drop existing foreign keys (if they exist)
 -- These are optional since CHANGE COLUMN handles it gracefully
